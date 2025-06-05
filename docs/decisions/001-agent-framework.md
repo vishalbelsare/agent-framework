@@ -25,7 +25,7 @@ The core question is: Should we create a brand-new agent framework (starting fro
 
 - User and Customer Impact: We have an established user base on SK (who were encouraged to build production solutions on it) and a separate following around Autogen. We want to avoid splitting or losing either community. The solution should present a clear, persuasive story to users that communicates the added value as well as an upgrade path rather than a forced rewrite.
 - Community and Perception: There is a messaging advantage if we evolve SK. We can frame the change as a natural evolution (“Semantic Kernel 2.0”) rather than introducing an entirely new framework that stakeholders might question the need for. Conversely, some Autogen users have biases against SK, so the plan must include a strategy to rebrand or reposition the evolved SK to appeal to them (for example, by dropping the word “Kernel” in the name and removing the concept and re-platforming AG AgentChat on SK2).
-- Development Effort and Timeline: Building a new framework from scratch would mean re-implementing existing functionality (connectors, memory storage, plugins, etc.) which is a large effort and could delay delivering new capabilities. We have an ambitous target timeline for initial deliverables, so we must use our resources efficiently.
+- Development Effort and Timeline: Building a new framework from scratch would mean re-implementing existing functionality (connectors, memory storage, plugins, etc.) which is a large effort and could delay delivering new capabilities. We have an ambitious target timeline for initial deliverables, so we must use our resources efficiently.
 - Integration vs. Duplication: Reusing existing, proven components is desirable to reduce duplicate work. SK already provides many integrations (AI services, vector memory, logging, etc.). Creating a new framework would duplicate much of this functionality in a new project, whereas evolving SK could modify these in place.
 - Technical Goals – Multi-Agent Workflows: The primary feature goal is to support complex multi-agent workflows with a great developer experience (easy orchestration, elegant APIs, cloud-ready deployment). The chosen approach must facilitate this “workflow engine” and provide a short path from prototyping to deployment to scale as the key value proposition.
 - Architecture Maintainability: We aim to simplify the architecture for long-term maintainability. Notably, the current SK contains a central “Kernel” component that manages calls; the new design proposes removing that to make agent components more modular and flexible. We need to decide if this overhaul is done within SK or via a new codebase.
@@ -36,22 +36,21 @@ The core question is: Should we create a brand-new agent framework (starting fro
 ## Considered Options
 
 
-Option 1: Create a New Agent Framework (from scratch)
+- **Option 1: Create a New Agent Framework (from scratch)**
+    - Develop an entirely new orchestration framework, independent of Semantic Kernel. This would involve setting up a new repository and migrating or rewriting functionality from SK/Autogen as needed.
 
-Develop an entirely new orchestration framework, independent of Semantic Kernel. This would involve setting up a new repository and migrating or rewriting functionality from SK/Autogen as needed.
+- **Option 2: Evolve Semantic Kernel to Version 2.0**
+    - Treat this effort as the next major release of Semantic Kernel, incorporating the new agent framework design. SK would undergo significant refactoring (e.g., removal of the Kernel component, API changes) and be released as Semantic Kernel 2.0 (potentially under a new name to reflect its agent-focused improvements). AutoGen's AgentChat will be re-platformed on SK 2.0.
 
-Option 2: Evolve Semantic Kernel to Version 2.0
-
-Treat this effort as the next major release of Semantic Kernel, incorporating the new agent framework design. SK would undergo significant refactoring (e.g., removal of the Kernel component, API changes) and be released as Semantic Kernel 2.0 (potentially under a new name to reflect its agent-focused improvements). AutoGen's AgentChat will be re-platformed on SK 2.0.
-
-- … <!-- numbers of options can vary -->
+- **Option 3: Create new Microsoft.Extensions packages for Agent primitives and shared implementations**
+    - A new `Microsoft.Extensions.Agents.Abstractions` (prefix could be `Microsoft.Extensions.AI.Agents` or `Microsoft.Extensions.AG`) package would contain the Agent primitives and would only depend on `Microsoft.Extensions.AI.Abstractions` (and other abstractions packages) to keep it lightweight to encourage reuse and implementations to be created. E.g. existing Agent client packages could implement the abstractions. Note: This is the same approach we used to update the Semantic Kernel vector data connectors to build on `Microsoft.Extensions.VectorData` (the SK vector data conneectors now only depend on M.E.VD).
 
 ## Decision Outcome
 
 
 Chosen Option: Evolve Semantic Kernel to Version 2.0.
 
-The team reached consensus that building on the existing Semantic Kernel is the optimal path, rather than creating a net-new framework. In other words, the new “agent framework” will be delivered as Semantic Kernel 2.0 – a major evolution of the current SK, containing the redesigned agent orchestration capabilities. Naming will be decided seperately.
+The team reached consensus that building on the existing Semantic Kernel is the optimal path, rather than creating a net-new framework. In other words, the new “agent framework” will be delivered as Semantic Kernel 2.0 – a major evolution of the current SK, containing the redesigned agent orchestration capabilities. Naming will be decided separately.
 
 Justification: This choice best addresses the decision drivers:
 
@@ -103,12 +102,7 @@ By executing these validation steps, we aim to catch any shortcomings early and 
 
 ### Option 1: Create a New Agent Framework (from scratch)
 
-<!-- This is an optional element. Feel free to remove. -->
-
-
-Pros and Cons of the Options
-
-Description: Start a completely new project/repository for the agent orchestration framework. The new framework would not carry any legacy baggage from Semantic Kernel. We would migrate useful pieces from SK or Autogen manually or rewrite them in a cleaner way as needed. The end product would be brand-new in branding and possibly in design.
+**Description:** Start a completely new project/repository for the agent orchestration framework. The new framework would not carry any legacy baggage from Semantic Kernel. We would migrate useful pieces from SK or Autogen manually or rewrite them in a cleaner way as needed. The end product would be brand-new in branding and possibly in design.
 
 - Good, because fresh start with no legacy constraints: The team could design the framework exactly as desired, without being limited by SK’s existing architecture. This clean-slate approach might result in a more streamlined codebase, since we include only what is needed for agents and can implement modern patterns from scratch.
 - Good, because no immediate backwards-compatibility issues: A new framework would not have to maintain compatibility with SK’s API. We could introduce breaking changes freely in the initial design, which means we can optimize the API for the future without concern for deprecating old methods. (However, this is a short-term advantage, as we’d still need to support the new framework’s users once it’s released.)
@@ -120,8 +114,7 @@ Description: Start a completely new project/repository for the agent orchestrati
 
 ### Option 2: Evolve Semantic Kernel to Version 2.0 (chosen)
 
-
-Description: Use Semantic Kernel as the foundation and incorporate the new agent framework design into it, releasing the result as a major new version. This involves “forking” or creating a development branch of SK, implementing changes like removing the Kernel component, improving the agent interfaces, and integrating Autogen’s workflow ideas. The end product remains Semantic Kernel in essence, but significantly revamped for the agent use-case. It may be renamed upon release (e.g., SK Agents 2.0 or similar) to reflect the changes.
+**Description:** Use Semantic Kernel as the foundation and incorporate the new agent framework design into it, releasing the result as a major new version. This involves “forking” or creating a development branch of SK, implementing changes like removing the Kernel component, improving the agent interfaces, and integrating Autogen’s workflow ideas. The end product remains Semantic Kernel in essence, but significantly revamped for the agent use-case. It may be renamed upon release (e.g., SK Agents 2.0 or similar) to reflect the changes.
 
 - Good, because builds on proven technology: We carry forward all the useful and working parts of Semantic Kernel. This provides immediate support for a variety of features (e.g., existing connectors to OpenAI, memory providers, logging, etc.) in the new version without extra work. The team can focus on new capabilities and necessary refactoring, rather than starting everything from scratch.
 - Good, because easier adoption and migration: Since it’s an evolution, current SK users can upgrade to 2.0 following a guide, instead of having to switch to a different framework. They maintain confidence that their investment in learning SK was not wasted. Autogen users will see that their feedback led to improvements in a widely-supported platform. Overall, it positions the change as an upgrade for everyone, not a replacement that might leave some behind.
@@ -134,14 +127,32 @@ Description: Use Semantic Kernel as the foundation and incorporate the new agent
 
 Despite these drawbacks, the consensus was that the pros of Option 2 outweigh the cons, which is why Option 2 was selected.
 
-- …
+### Option 3: Create new Microsoft.Extensions packages for Agent primitives and shared implementations**
 
-<!-- This is an optional element. Feel free to remove. -->
+**Description:** A new `Microsoft.Extensions.Agents.Abstractions` (prefix could be `Microsoft.Extensions.AI.Agents` or `Microsoft.Extensions.AG`) package would contain the Agent primitives and would only depend on `Microsoft.Extensions.AI.Abstractions` (and other abstractions packages) to keep it lightweight to encoourage reuse and implementations to be created. E.g. existing Agent client packages could implement the abstractions. A new `Microsoft.Extensions.Agents` package would contain OOB implementations e.g. a `ChatClientAgent` which uses an `IChatClient` and supports the `AITool`'s supported by M.E.AI i.e. `AIFunction`, `HostedCodeInterpreterTool`, `HostedWebSearchTool` (this list of tools can be extended over time).
+
+**Note: We would partner with the .Net team to build the new `Microsoft.Extensions.Agents.Abstractions`package.**
+
+The Semantic Kernel Agent Framework would be updated in phases to build on the `Microsoft.Extensions.Agents.Abstractions`. Note: This is the same approach we used to update the Semantic Kernel vector data connectors to build on `Microsoft.Extensions.VectorData` (the SK vector data conneectors now only depend on M.E.VD). The phases aproach would work like this:
+
+- **Phase 1:** Introduce the new `Microsoft.Extensions.Agents.Abstractions`. Semantic Kernel Agent Framework is updated to implement/extend the associated `Agent` primitive. This would be a binary breaking change but we have options e.g. introduce an `IAgent` rather than a base class or keep the existing GA API surface in existing agent implementations or take the breaking change early.
+- **Phase 2:** Update Semantic Kernel Agent Framework orchestration and Process Framework to use the new Agent abstractions. At this point we can obsolete the existing GA API surface.
+- **Phase 3:** Clean up Semantic Kernel Agent Framework to remove all experimental code e.g. `AgentChannel` etc.
+- **Phase 4:** Clean up Semantic Kernel Agent Framework to remove all obsolete code.
+
+- Good, because it builds on the proven pattern of using a `Microsoft.Extensions.XXX.Abstractions`. This will strengthen Microsoft's AI developer eco-system by providing new primitives for Agents.
+- Good, because provides an upgrade path for developers using the existing GA Semantic Kernel Agent Framework.
+- Good, because the Semantic Kernel team has experience with this approach having successfully introduced the `Microsoft.Extensions.VectorData.Abstractions` and updated the associated Semantic Kernel connectors.
+- Good, because it avoids confusion if we introduce new packages contain Agent implementations.
+- Neutral, because graduating a new `Microsoft.Extensions.Agents.Abstractions` package will take time and may not be acheiveable in our preferred time frame. This won't be bad for customers as it will give them longer to adopt the new patterns.
+- Bad, because Python doesn't have `Microsoft.Extensions.XXX.Abstractions` so there will be a lot of work to introduce this pattern for Python.
+- Bad, because it eliminates any concerns about adopting Semantic Kernel abstractions. We have had feedback that other 1st and 3rd party .Net teams prefer to have seperate packages for abstractions that are owned by the .Net team.
+
 
 ## More Information
 
 
-This decision was discussed and formulated during the Scrum of Scrums meeting on June 3, 20251. The team present included the SK engineering leads and representatives of the Autogen effort, ensuring that the perspectives of both frameworks were considered. Everyone acknowledged the importance of not fracturing our developer community and of delivering value quickly.
+This decision was discussed and formulated during the Scrum of Scrums meeting on June 3, 2025. The team present included the SK engineering leads and representatives of the Autogen effort, ensuring that the perspectives of both frameworks were considered. Everyone acknowledged the importance of not fracturing our developer community and of delivering value quickly.
 Next Steps & Implementation Plan: Now that we’ve decided to proceed with Semantic Kernel 2.0, the plan is to:
 
 - Initiate a Semantic Kernel 2.0 branch/repo: We will create a development branch (or a forked repository) for SK 2.0 work. The initial focus will be on implementing the new agent orchestration core and removing the existing kernel component in a safe manner1. We may start by forking SK into a new temporary repository (perhaps called “agent-framework” internally) to freely refactor, and later consider merging back or replacing SK’s main branch with 2.0.
