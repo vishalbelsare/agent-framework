@@ -4,6 +4,28 @@
     <BuildType Name="Publish" />
     <BuildType Name="Release" />
   </Configurations>
+  <Folder Name="/ConformanceTests/">
+    <Project Path="tests/AgentConformance.IntegrationTests/AgentConformance.IntegrationTests.csproj">
+      <BuildType Solution="Publish|*" Project="Release" />
+    </Project>
+    <Project Path="tests/AzureAIAgentsPersistent.IntegrationTests/AzureAIAgentsPersistent.IntegrationTests.csproj" Id="e91d4745-7ccd-4de8-9bc0-31081f540038">
+      <BuildType Solution="Publish|*" Project="Release" />
+    </Project>
+    <Project Path="tests/OpenAIAssistant.IntegrationTests/OpenAIAssistant.IntegrationTests.csproj" Id="a35b6971-6f27-4904-a168-8e12b229cced">
+      <BuildType Solution="Publish|*" Project="Release" />
+    </Project>
+    <Project Path="tests/OpenAIChatCompletion.IntegrationTests/OpenAIChatCompletion.IntegrationTests.csproj">
+      <BuildType Solution="Publish|*" Project="Release" />
+    </Project>
+    <Project Path="tests/OpenAIResponse.IntegrationTests/OpenAIResponse.IntegrationTests.csproj">
+      <BuildType Solution="Publish|*" Project="Release" />
+    </Project>
+  </Folder>
+  <Folder Name="/Samples/">
+    <Project Path="samples/GettingStarted/GettingStarted.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
@@ -20,15 +42,40 @@
     <File Path="tests/.editorconfig" />
     <File Path="tests/Directory.Build.props" />
   </Folder>
+  <Folder Name="/Solution Items/.github/" />
+  <Folder Name="/Solution Items/.github/workflows/">
+    <File Path="../.github/workflows/dotnet-build-and-test.yml" />
+    <File Path="../.github/workflows/dotnet-check-coverage.ps1" />
+    <File Path="../.github/workflows/dotnet-format.yml" />
+  </Folder>
+  <Folder Name="/Solution Items/eng/" />
   <Folder Name="/Solution Items/eng/MSBuild/">
     <File Path="eng/MSBuild/LegacySupport.props" />
     <File Path="eng/MSBuild/Shared.props" />
     <File Path="eng/MSBuild/Shared.targets" />
   </Folder>
+  <Folder Name="/Solution Items/src/Shared/" />
   <Folder Name="/Solution Items/src/Shared/Throw/">
     <File Path="src/Shared/Throw/README.md" />
     <File Path="src/Shared/Throw/Throw.cs" />
   </Folder>
+  <Folder Name="/Solution Items/src/Shared/IntegrationTests/">
+    <File Path="src/Shared/IntegrationTests/AzureAIConfiguration.cs" />
+    <File Path="src/Shared/IntegrationTests/OpenAIConfiguration.cs" />
+    <File Path="src/Shared/IntegrationTests/README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/src/Shared/Samples/">
+    <File Path="src/Shared/Samples/README.md" />
+    <File Path="src/Shared/Samples/BaseSample.cs" />
+    <File Path="src/Shared/Samples/TestConfiguration.cs" />
+    <File Path="src/Shared/Samples/TextOutputHelperExtensions.cs" />
+    <File Path="src/Shared/Samples/XunitLogger.cs" />
+  </Folder>
+  <Folder Name="/Solution Items/samples/">
+    <File Path="samples/.editorconfig" />
+    <File Path="samples/Directory.Build.props" />
+  </Folder>
+  <Folder Name="/Solution Items/src/" />
   <Folder Name="/Solution Items/src/LegacySupport/">
     <File Path="src/LegacySupport/README.md" />
   </Folder>
@@ -39,6 +86,10 @@
   <Folder Name="/Solution Items/src/LegacySupport/DiagnosticAttributes/">
     <File Path="src/LegacySupport/DiagnosticAttributes/NullableAttributes.cs" />
     <File Path="src/LegacySupport/DiagnosticAttributes/README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/src/LegacySupport/DiagnosticClasses/">
+    <File Path="src/LegacySupport/DiagnosticClasses/UnreachableException.cs" />
+    <File Path="src/LegacySupport/DiagnosticClasses/README.md" />
   </Folder>
   <Folder Name="/Solution Items/src/LegacySupport/ExperimentalAttribute/">
     <File Path="src/LegacySupport/ExperimentalAttribute/ExperimentalAttribute.cs" />
@@ -56,12 +107,29 @@
     <File Path="src/LegacySupport/TrimAttributes/RequiresUnreferencedCodeAttribute.cs" />
     <File Path="src/LegacySupport/TrimAttributes/UnconditionalSuppressMessageAttribute.cs" />
   </Folder>
-  <Project Path="src/Microsoft.Agents.Abstractions/Microsoft.Agents.Abstractions.csproj" />
-  <Project Path="src/Microsoft.Agents/Microsoft.Agents.csproj" />
-  <Project Path="tests/Microsoft.Agents.Abstractions.UnitTests/Microsoft.Agents.Abstractions.UnitTests.csproj">
-    <BuildType Solution="Publish|*" Project="Debug" />
-  </Project>
-  <Project Path="tests/Microsoft.Agents.UnitTests/Microsoft.Agents.UnitTests.csproj">
-    <BuildType Solution="Publish|*" Project="Debug" />
-  </Project>
+  <Folder Name="/src/">
+    <Project Path="src/Microsoft.Agents.Orchestration/Microsoft.Agents.Orchestration.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Agents.Abstractions/Microsoft.Extensions.AI.Agents.Abstractions.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Agents.AzureAI/Microsoft.Extensions.AI.Agents.AzureAI.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Agents.Runtime.Abstractions/Microsoft.Extensions.AI.Agents.Runtime.Abstractions.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Agents.Runtime.InProcess/Microsoft.Extensions.AI.Agents.Runtime.InProcess.csproj" />
+    <Project Path="src/Microsoft.Extensions.AI.Agents/Microsoft.Extensions.AI.Agents.csproj" />
+  </Folder>
+  <Folder Name="/UnitTests/">
+    <Project Path="tests/Microsoft.Agents.Orchestration.UnitTests/Microsoft.Agents.Orchestration.UnitTests.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+    <Project Path="tests/Microsoft.Extensions.AI.Agents.Abstractions.UnitTests/Microsoft.Extensions.AI.Agents.Abstractions.UnitTests.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+    <Project Path="tests/Microsoft.Extensions.AI.Agents.Runtime.Abstractions.UnitTests/Microsoft.Extensions.AI.Agents.Runtime.Abstractions.UnitTests.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+    <Project Path="tests/Microsoft.Extensions.AI.Agents.Runtime.InProcess.UnitTests/Microsoft.Extensions.AI.Agents.Runtime.InProcess.UnitTests.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+    <Project Path="tests/Microsoft.Extensions.AI.Agents.UnitTests/Microsoft.Extensions.AI.Agents.UnitTests.csproj">
+      <BuildType Solution="Publish|*" Project="Debug" />
+    </Project>
+  </Folder>
 </Solution>
