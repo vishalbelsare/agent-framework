@@ -1,10 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Agents.Orchestration.GroupChat;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 
 namespace Microsoft.Agents.Orchestration.UnitTest;
 
@@ -17,11 +15,10 @@ public class GroupChatOrchestrationTests
     public async Task GroupChatOrchestrationWithSingleAgentAsync()
     {
         // Arrange
-        await using InProcessRuntime runtime = new();
         MockAgent mockAgent1 = MockAgent.CreateWithResponse(2, "xyz");
 
         // Act: Create and execute the orchestration
-        string response = await ExecuteOrchestrationAsync(runtime, mockAgent1);
+        string response = await ExecuteOrchestrationAsync(mockAgent1);
 
         // Assert
         Assert.Equal(1, mockAgent1.InvokeCount);
@@ -32,14 +29,12 @@ public class GroupChatOrchestrationTests
     public async Task GroupChatOrchestrationWithMultipleAgentsAsync()
     {
         // Arrange
-        await using InProcessRuntime runtime = new();
-
         MockAgent mockAgent1 = MockAgent.CreateWithResponse(1, "abc");
         MockAgent mockAgent2 = MockAgent.CreateWithResponse(2, "xyz");
         MockAgent mockAgent3 = MockAgent.CreateWithResponse(3, "lmn");
 
         // Act: Create and execute the orchestration
-        string response = await ExecuteOrchestrationAsync(runtime, mockAgent1, mockAgent2, mockAgent3);
+        string response = await ExecuteOrchestrationAsync(mockAgent1, mockAgent2, mockAgent3);
 
         // Assert
         Assert.Equal(1, mockAgent1.InvokeCount);
@@ -48,24 +43,18 @@ public class GroupChatOrchestrationTests
         Assert.Equal("lmn", response);
     }
 
-    private static async Task<string> ExecuteOrchestrationAsync(InProcessRuntime runtime, params Agent[] mockAgents)
+    private static async Task<string> ExecuteOrchestrationAsync(params AIAgent[] mockAgents)
     {
         // Act
-        await runtime.StartAsync();
-
         GroupChatOrchestration orchestration = new(new RoundRobinGroupChatManager() { MaximumInvocationCount = mockAgents.Length }, mockAgents);
 
         const string InitialInput = "123";
-        OrchestrationResult<string> result = await orchestration.InvokeAsync(InitialInput, runtime);
+        AgentRunResponse result = await orchestration.RunAsync(InitialInput);
 
         // Assert
         Assert.NotNull(result);
 
         // Act
-        string response = await result.GetValueAsync(TimeSpan.FromSeconds(20));
-
-        await runtime.RunUntilIdleAsync();
-
-        return response;
+        return result.Messages.Last().Text;
     }
 }

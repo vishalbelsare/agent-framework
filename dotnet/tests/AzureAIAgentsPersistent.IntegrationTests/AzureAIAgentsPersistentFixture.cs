@@ -25,7 +25,7 @@ public class AzureAIAgentsPersistentFixture : IChatClientAgentFixture
 
     public IChatClient ChatClient => this._agent.ChatClient;
 
-    public Agent Agent => this._agent;
+    public AIAgent Agent => this._agent;
 
     public async Task<List<ChatMessage>> GetChatHistoryAsync(AgentThread thread)
     {
@@ -73,7 +73,7 @@ public class AzureAIAgentsPersistentFixture : IChatClientAgentFixture
 
         return new ChatClientAgent(
             this._persistentAgentsClient.AsIChatClient(persistentAgent.Id),
-            new()
+            options: new()
             {
                 Id = persistentAgent.Id,
                 ChatOptions = new() { Tools = aiTools }

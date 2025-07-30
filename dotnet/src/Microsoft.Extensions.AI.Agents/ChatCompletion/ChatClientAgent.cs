@@ -15,7 +15,7 @@ namespace Microsoft.Extensions.AI.Agents;
 /// <summary>
 /// Represents an agent that can be invoked using a chat client.
 /// </summary>
-public sealed class ChatClientAgent : Agent
+public sealed class ChatClientAgent : AIAgent
 {
     private readonly ChatClientAgentOptions? _agentOptions;
     private readonly ILogger _logger;
@@ -25,9 +25,35 @@ public sealed class ChatClientAgent : Agent
     /// Initializes a new instance of the <see cref="ChatClientAgent"/> class.
     /// </summary>
     /// <param name="chatClient">The chat client to use for invoking the agent.</param>
-    /// <param name="options">Optional agent options to configure the agent.</param>
+    /// <param name="instructions">Optional instructions for the agent.</param>
+    /// <param name="name">Optional name for the agent.</param>
+    /// <param name="description">Optional description for the agent.</param>
+    /// <param name="tools">Optional list of tools that the agent can use during invocation.</param>
     /// <param name="loggerFactory">Optional logger factory to use for logging.</param>
-    public ChatClientAgent(IChatClient chatClient, ChatClientAgentOptions? options = null, ILoggerFactory? loggerFactory = null)
+    public ChatClientAgent(IChatClient chatClient, string? instructions = null, string? name = null, string? description = null, IList<AITool>? tools = null, ILoggerFactory? loggerFactory = null)
+        : this(
+              chatClient,
+              new ChatClientAgentOptions()
+              {
+                  Name = name,
+                  Description = description,
+                  Instructions = instructions,
+                  ChatOptions = tools is null ? null : new ChatOptions()
+                  {
+                      Tools = tools,
+                  }
+              },
+              loggerFactory)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ChatClientAgent"/> class.
+    /// </summary>
+    /// <param name="chatClient">The chat client to use for invoking the agent.</param>
+    /// <param name="options">Full set of options to configure the agent.</param>
+    /// <param name="loggerFactory">Optional logger factory to use for logging.</param>
+    public ChatClientAgent(IChatClient chatClient, ChatClientAgentOptions options, ILoggerFactory? loggerFactory = null)
     {
         Throw.IfNull(chatClient);
 
@@ -67,7 +93,7 @@ public sealed class ChatClientAgent : Agent
     internal ChatOptions? ChatOptions => this._agentOptions?.ChatOptions;
 
     /// <inheritdoc/>
-    public override async Task<ChatResponse> RunAsync(
+    public override async Task<AgentRunResponse> RunAsync(
         IReadOnlyCollection<ChatMessage> messages,
         AgentThread? thread = null,
         AgentRunOptions? options = null,
@@ -78,7 +104,7 @@ public sealed class ChatClientAgent : Agent
         (ChatClientAgentThread chatClientThread, ChatOptions? chatOptions, List<ChatMessage> threadMessages) =
             await this.PrepareThreadAndMessagesAsync(thread, messages, options, cancellationToken).ConfigureAwait(false);
 
-        var agentName = this.GetAgentName();
+        var agentName = this.GetLoggingAgentName();
 
         this._logger.LogAgentChatClientInvokingAgent(nameof(RunAsync), this.Id, agentName, this._chatClientType);
 
@@ -103,16 +129,12 @@ public sealed class ChatClientAgent : Agent
         var chatResponseMessages = chatResponse.Messages as IReadOnlyCollection<ChatMessage> ?? chatResponse.Messages.ToArray();
 
         await this.NotifyThreadOfNewMessagesAsync(chatClientThread, chatResponseMessages, cancellationToken).ConfigureAwait(false);
-        if (options?.OnIntermediateMessages is not null)
-        {
-            await options.OnIntermediateMessages(chatResponseMessages).ConfigureAwait(false);
-        }
 
-        return chatResponse;
+        return new(chatResponse) { AgentId = this.Id };
     }
 
     /// <inheritdoc/>
-    public override async IAsyncEnumerable<ChatResponseUpdate> RunStreamingAsync(
+    public override async IAsyncEnumerable<AgentRunResponseUpdate> RunStreamingAsync(
         IReadOnlyCollection<ChatMessage> messages,
         AgentThread? thread = null,
         AgentRunOptions? options = null,
@@ -124,14 +146,14 @@ public sealed class ChatClientAgent : Agent
             await this.PrepareThreadAndMessagesAsync(thread, inputMessages, options, cancellationToken).ConfigureAwait(false);
 
         int messageCount = threadMessages.Count;
-        var agentName = this.GetAgentName();
+        var loggingAgentName = this.GetLoggingAgentName();
 
-        this._logger.LogAgentChatClientInvokingAgent(nameof(RunStreamingAsync), this.Id, agentName, this._chatClientType);
+        this._logger.LogAgentChatClientInvokingAgent(nameof(RunStreamingAsync), this.Id, loggingAgentName, this._chatClientType);
 
         // Using the enumerator to ensure we consider the case where no updates are returned for notification.
         var responseUpdatesEnumerator = this.ChatClient.GetStreamingResponseAsync(threadMessages, chatOptions, cancellationToken).GetAsyncEnumerator(cancellationToken);
 
-        this._logger.LogAgentChatClientInvokedStreamingAgent(nameof(RunStreamingAsync), this.Id, agentName, this._chatClientType);
+        this._logger.LogAgentChatClientInvokedStreamingAgent(nameof(RunStreamingAsync), this.Id, loggingAgentName, this._chatClientType);
 
         List<ChatResponseUpdate> responseUpdates = [];
 
@@ -144,8 +166,8 @@ public sealed class ChatClientAgent : Agent
             if (update is not null)
             {
                 responseUpdates.Add(update);
-                update.AuthorName ??= agentName;
-                yield return update;
+                update.AuthorName ??= this.Name;
+                yield return new(update) { AgentId = this.Id };
             }
 
             hasUpdates = await responseUpdatesEnumerator.MoveNextAsync().ConfigureAwait(false);
@@ -162,10 +184,6 @@ public sealed class ChatClientAgent : Agent
         await this.NotifyThreadOfNewMessagesAsync(chatClientThread, inputMessages, cancellationToken).ConfigureAwait(false);
 
         await this.NotifyThreadOfNewMessagesAsync(chatClientThread, chatResponseMessages, cancellationToken).ConfigureAwait(false);
-        if (options?.OnIntermediateMessages is not null)
-        {
-            await options.OnIntermediateMessages(chatResponseMessages).ConfigureAwait(false);
-        }
     }
 
     /// <inheritdoc/>
@@ -342,12 +360,9 @@ public sealed class ChatClientAgent : Agent
     private void UpdateThreadWithTypeAndConversationId(ChatClientAgentThread chatClientThread, string? responseConversationId)
     {
         // Set the thread's storage location, the first time that we use it.
-        if (chatClientThread.StorageLocation is null)
-        {
-            chatClientThread.StorageLocation = string.IsNullOrWhiteSpace(responseConversationId)
-                ? ChatClientAgentThreadType.InMemoryMessages
-                : ChatClientAgentThreadType.ConversationId;
-        }
+        chatClientThread.StorageLocation ??= string.IsNullOrWhiteSpace(responseConversationId)
+            ? ChatClientAgentThreadType.InMemoryMessages
+            : ChatClientAgentThreadType.ConversationId;
 
         // If we got a conversation id back from the chat client, it means that the service supports server side thread storage
         // so we should capture the id and update the thread with the new id.
@@ -370,6 +385,6 @@ public sealed class ChatClientAgent : Agent
         }
     }
 
-    private string GetAgentName() => this.Name ?? "UnnamedAgent";
+    private string GetLoggingAgentName() => this.Name ?? "UnnamedAgent";
     #endregion
 }

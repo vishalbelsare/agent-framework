@@ -7,10 +7,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Agents.Orchestration.Handoff;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 using OpenAI;
 
 namespace Microsoft.Agents.Orchestration.UnitTest;
@@ -44,14 +42,14 @@ public sealed class HandoffOrchestrationTests : IDisposable
     public async Task HandoffOrchestrationWithSingleAgentAsync()
     {
         // Arrange
-        Agent mockAgent1 =
+        AIAgent mockAgent1 =
             this.CreateMockAgent(
                 "Agent1",
                 "Test Agent",
                 Responses.Message("Final response"));
 
         // Act: Create and execute the orchestration
-        string response = await ExecuteOrchestrationAsync(OrchestrationHandoffs.StartWith(mockAgent1), mockAgent1);
+        string response = await ExecuteOrchestrationAsync(Handoffs.StartWith(mockAgent1));
 
         // Assert
         Assert.Equal("Final response", response);
@@ -61,17 +59,17 @@ public sealed class HandoffOrchestrationTests : IDisposable
     public async Task HandoffOrchestrationWithMultipleAgentsAsync()
     {
         // Arrange
-        Agent mockAgent1 =
+        AIAgent mockAgent1 =
             this.CreateMockAgent(
                 "Agent1",
                 "Test Agent",
                 Responses.Handoff("Agent2"));
-        Agent mockAgent2 =
+        AIAgent mockAgent2 =
             this.CreateMockAgent(
                 "Agent2",
                 "Test Agent",
                 Responses.Result("Final response"));
-        Agent mockAgent3 =
+        AIAgent mockAgent3 =
             this.CreateMockAgent(
                 "Agent3",
                 "Test Agent",
@@ -79,37 +77,28 @@ public sealed class HandoffOrchestrationTests : IDisposable
 
         // Act: Create and execute the orchestration
         string response = await ExecuteOrchestrationAsync(
-            OrchestrationHandoffs
+            Handoffs
                 .StartWith(mockAgent1)
-                .Add(mockAgent1, mockAgent2, mockAgent3),
-            mockAgent1,
-            mockAgent2,
-            mockAgent3);
+                .Add(mockAgent1, [mockAgent2, mockAgent3]));
 
         // Assert
         Assert.Equal("Final response", response);
     }
 
-    private static async Task<string> ExecuteOrchestrationAsync(OrchestrationHandoffs handoffs, params Agent[] mockAgents)
+    private static async Task<string> ExecuteOrchestrationAsync(Handoffs handoffs)
     {
         // Arrange
-        await using InProcessRuntime runtime = new();
-        await runtime.StartAsync();
-
-        HandoffOrchestration orchestration = new(handoffs, mockAgents);
+        HandoffOrchestration orchestration = new(handoffs);
 
         // Act
         const string InitialInput = "123";
-        OrchestrationResult<string> result = await orchestration.InvokeAsync(InitialInput, runtime);
+        AgentRunResponse result = await orchestration.RunAsync(InitialInput);
 
         // Assert
         Assert.NotNull(result);
 
         // Act
-        string response = await result.GetValueAsync(TimeSpan.FromSeconds(10));
-        await runtime.RunUntilIdleAsync();
-
-        return response;
+        return result.Text;
     }
 
     private ChatClientAgent CreateMockAgent(string name, string description, params string[] responses)

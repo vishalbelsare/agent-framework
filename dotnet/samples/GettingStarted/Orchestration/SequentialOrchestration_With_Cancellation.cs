@@ -1,9 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Agents.Orchestration;
-using Microsoft.Agents.Orchestration.Sequential;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 
 namespace Orchestration;
 
@@ -26,29 +25,22 @@ public class SequentialOrchestration_With_Cancellation(ITestOutputHelper output)
         // Define the orchestration
         SequentialOrchestration orchestration = new(agent) { LoggerFactory = this.LoggerFactory };
 
-        // Start the runtime
-        await using InProcessRuntime runtime = new();
-        await runtime.StartAsync();
-
         // Run the orchestration
         string input = "42";
         Console.WriteLine($"\n# INPUT: {input}\n");
 
-        OrchestrationResult<string> result = await orchestration.InvokeAsync(input, runtime);
+        OrchestratingAgentResponse result = await orchestration.RunAsync([new ChatMessage(ChatRole.User, input)]);
 
         result.Cancel();
         await Task.Delay(TimeSpan.FromSeconds(3));
 
         try
         {
-            string text = await result.GetValueAsync(TimeSpan.FromSeconds(ResultTimeoutInSeconds));
-            Console.WriteLine($"\n# RESULT: {text}");
+            Console.WriteLine($"\n# RESULT: {await result}");
         }
-        catch (AggregateException exception)
+        catch (TimeoutException exception)
         {
-            Console.WriteLine($"\n# CANCELLED: {exception.InnerException?.Message}");
+            Console.WriteLine($"\n# CANCELED: {exception.Message}");
         }
-
-        await runtime.RunUntilIdleAsync();
     }
 }

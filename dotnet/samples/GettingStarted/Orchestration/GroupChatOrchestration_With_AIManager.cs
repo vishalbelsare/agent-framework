@@ -1,10 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Agents.Orchestration;
-using Microsoft.Agents.Orchestration.GroupChat;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 
 namespace Orchestration;
 
@@ -132,17 +130,10 @@ public class GroupChatOrchestration_With_AIManager(ITestOutputHelper output) : O
                 ResponseCallback = monitor.ResponseCallback,
             };
 
-        // Start the runtime
-        await using InProcessRuntime runtime = new();
-        await runtime.StartAsync();
-
         // Run the orchestration
         Console.WriteLine($"\n# INPUT: {topic}\n");
-        OrchestrationResult<string> result = await orchestration.InvokeAsync(topic, runtime);
-        string text = await result.GetValueAsync(TimeSpan.FromSeconds(ResultTimeoutInSeconds * 3));
-        Console.WriteLine($"\n# RESULT: {text}");
-
-        await runtime.RunUntilIdleAsync();
+        AgentRunResponse result = await orchestration.RunAsync(topic);
+        Console.WriteLine($"\n# RESULT: {result}");
 
         this.DisplayHistory(monitor.History);
     }
@@ -176,19 +167,19 @@ public class GroupChatOrchestration_With_AIManager(ITestOutputHelper output) : O
         }
 
         /// <inheritdoc/>
-        public override ValueTask<GroupChatManagerResult<string>> FilterResults(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default) =>
+        protected override ValueTask<GroupChatManagerResult<string>> FilterResults(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default) =>
             this.GetResponseAsync<string>(history, Prompts.Filter(topic), cancellationToken);
 
         /// <inheritdoc/>
-        public override ValueTask<GroupChatManagerResult<string>> SelectNextAgent(IReadOnlyCollection<ChatMessage> history, GroupChatTeam team, CancellationToken cancellationToken = default) =>
+        protected override ValueTask<GroupChatManagerResult<string>> SelectNextAgent(IReadOnlyCollection<ChatMessage> history, GroupChatTeam team, CancellationToken cancellationToken = default) =>
             this.GetResponseAsync<string>(history, Prompts.Selection(topic, team.FormatList()), cancellationToken);
 
         /// <inheritdoc/>
-        public override ValueTask<GroupChatManagerResult<bool>> ShouldRequestUserInput(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default) =>
+        protected override ValueTask<GroupChatManagerResult<bool>> ShouldRequestUserInput(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default) =>
             new(new GroupChatManagerResult<bool>(false) { Reason = "The AI group chat manager does not request user input." });
 
         /// <inheritdoc/>
-        public override async ValueTask<GroupChatManagerResult<bool>> ShouldTerminate(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default)
+        protected override async ValueTask<GroupChatManagerResult<bool>> ShouldTerminate(IReadOnlyCollection<ChatMessage> history, CancellationToken cancellationToken = default)
         {
             GroupChatManagerResult<bool> result = await base.ShouldTerminate(history, cancellationToken);
             if (!result.Value)

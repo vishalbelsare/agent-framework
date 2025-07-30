@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -69,7 +70,7 @@ public class ChatClientAgentThreadTests
             .ReturnsAsync(new ChatResponse([assistantMessage]));
 
         // Create ChatClientAgent with the mocked client
-        var agent = new ChatClientAgent(mockChatClient.Object, new()
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new()
         {
             Instructions = "You are a helpful assistant"
         });
@@ -190,7 +191,7 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse([new ChatMessage(ChatRole.Assistant, "response")]));
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
 
         // Act
         var thread = agent.GetNewThread();
@@ -210,7 +211,7 @@ public class ChatClientAgentThreadTests
     {
         // Arrange
         var mockChatClient = new Mock<IChatClient>();
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
 
         // Act
         var thread1 = agent.GetNewThread();
@@ -242,7 +243,7 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse([assistantMessage]) { ConversationId = responseConversationId });
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new() { Instructions = "Test instructions" });
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new() { Instructions = "Test instructions" });
 
         // Act
         var thread = agent.GetNewThread();
@@ -298,7 +299,7 @@ public class ChatClientAgentThreadTests
             .ReturnsAsync(new ChatResponse([messages[1]]))
             .ReturnsAsync(new ChatResponse([messages[3]]));
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act - Add messages through multiple agent runs
@@ -349,7 +350,7 @@ public class ChatClientAgentThreadTests
             .Returns(returnUpdates.ToAsyncEnumerable());
 
         // Create ChatClientAgent with the mocked client
-        var agent = new ChatClientAgent(mockChatClient.Object, new()
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new()
         {
             Instructions = "You are a helpful assistant"
         });
@@ -358,7 +359,7 @@ public class ChatClientAgentThreadTests
         var thread = agent.GetNewThread();
 
         // Act - Run the agent with streaming to populate the thread with messages
-        var streamingResults = new List<ChatResponseUpdate>();
+        var streamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([userMessage], thread))
         {
             streamingResults.Add(update);
@@ -415,17 +416,17 @@ public class ChatClientAgentThreadTests
             .Returns(firstReturnUpdates.ToAsyncEnumerable())
             .Returns(secondReturnUpdates.ToAsyncEnumerable());
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act - Make two streaming calls
-        var firstStreamingResults = new List<ChatResponseUpdate>();
+        var firstStreamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([firstUserMessage], thread))
         {
             firstStreamingResults.Add(update);
         }
 
-        var secondStreamingResults = new List<ChatResponseUpdate>();
+        var secondStreamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([secondUserMessage], thread))
         {
             secondStreamingResults.Add(update);
@@ -486,14 +487,14 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .Returns(streamingUpdates.ToAsyncEnumerable());
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act - First, make a regular call to populate the thread
         await agent.RunAsync([initialUserMessage], thread);
 
         // Then make a streaming call
-        var streamingResults = new List<ChatResponseUpdate>();
+        var streamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([newUserMessage], thread))
         {
             streamingResults.Add(update);
@@ -538,11 +539,11 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .Returns(returnUpdates.ToAsyncEnumerable());
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act - Run the agent with streaming that returns no updates
-        var streamingResults = new List<ChatResponseUpdate>();
+        var streamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([userMessage], thread))
         {
             streamingResults.Add(update);
@@ -593,11 +594,11 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .Returns(returnUpdates.ToAsyncEnumerable());
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act - Run the agent with streaming that returns multiple updates
-        var streamingResults = new List<ChatResponseUpdate>();
+        var streamingResults = new List<AgentRunResponseUpdate>();
         await foreach (var update in agent.RunStreamingAsync([userMessage], thread))
         {
             streamingResults.Add(update);
@@ -638,7 +639,7 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .Throws(new InvalidOperationException("Streaming failed"));
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act & Assert - Verify that streaming throws an exception
@@ -688,11 +689,11 @@ public class ChatClientAgentThreadTests
                 It.IsAny<CancellationToken>()))
             .Returns(GetUpdatesWithExceptionAsync());
 
-        var agent = new ChatClientAgent(mockChatClient.Object, new());
+        var agent = new ChatClientAgent(mockChatClient.Object, options: new());
         var thread = agent.GetNewThread();
 
         // Act & Assert - Verify that streaming throws an exception after some updates
-        var streamingResults = new List<ChatResponseUpdate>();
+        var streamingResults = new List<AgentRunResponseUpdate>();
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
             await foreach (var update in agent.RunStreamingAsync([userMessage], thread))
@@ -715,6 +716,260 @@ public class ChatClientAgentThreadTests
         // Assert - Verify that the thread was NOT notified of any messages due to the exception
         // Even though some updates were received, the exception should prevent thread notification
         Assert.Empty(retrievedMessages);
+    }
+
+    #endregion
+
+    #region JSON Serialization Tests
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> can be serialized to JSON and deserialized back correctly.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonSerializationRoundTrip_DefaultThread()
+    {
+        // Arrange
+        var originalThread = new ChatClientAgentThread();
+
+        // Act
+        string json = JsonSerializer.Serialize(originalThread);
+        var deserializedThread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+
+        // Assert
+        Assert.NotNull(deserializedThread);
+        Assert.Equal(originalThread.Id, deserializedThread.Id);
+        Assert.Equal(originalThread.StorageLocation, deserializedThread.StorageLocation);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> with ID can be serialized to JSON and deserialized back correctly.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonSerializationRoundTrip_ThreadWithId()
+    {
+        // Arrange
+        var originalThread = new ChatClientAgentThread("test-conversation-id");
+
+        // Act
+        string json = JsonSerializer.Serialize(originalThread);
+        var deserializedThread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+
+        // Assert
+        Assert.NotNull(deserializedThread);
+        Assert.Equal("test-conversation-id", deserializedThread.Id);
+        Assert.Equal(ChatClientAgentThreadType.ConversationId, deserializedThread.StorageLocation);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> with messages can be serialized to JSON and deserialized back correctly.
+    /// </summary>
+    [Fact]
+    public async Task VerifyJsonSerializationRoundTrip_ThreadWithMessagesAsync()
+    {
+        // Arrange
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.User, "Hello, world!"),
+            new ChatMessage(ChatRole.Assistant, "Hi there! How can I help you?"),
+            new ChatMessage(ChatRole.User, "What's the weather like?")
+        };
+        var originalThread = new ChatClientAgentThread(messages);
+
+        // Act
+        string json = JsonSerializer.Serialize(originalThread);
+        var deserializedThread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+
+        // Assert
+        Assert.NotNull(deserializedThread);
+        Assert.Equal(originalThread.Id, deserializedThread.Id);
+        Assert.Equal(ChatClientAgentThreadType.InMemoryMessages, deserializedThread.StorageLocation);
+
+        // Verify messages are preserved
+        var originalMessages = await originalThread.GetMessagesAsync().ToListAsync();
+        var deserializedMessages = await deserializedThread.GetMessagesAsync().ToListAsync();
+
+        Assert.Equal(originalMessages.Count, deserializedMessages.Count);
+        for (int i = 0; i < originalMessages.Count; i++)
+        {
+            Assert.Equal(originalMessages[i].Role, deserializedMessages[i].Role);
+            Assert.Equal(originalMessages[i].Text, deserializedMessages[i].Text);
+        }
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> serialization handles null properties correctly.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonSerialization_HandlesNullProperties()
+    {
+        // Arrange
+        var thread = new ChatClientAgentThread();
+
+        // Act
+        string json = JsonSerializer.Serialize(thread);
+
+        // Assert - StorageLocation is no longer serialized independently
+        Assert.DoesNotContain("storageLocation", json, StringComparison.OrdinalIgnoreCase);
+
+        // Verify deserialization handles empty JSON correctly
+        var deserializedThread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+        Assert.NotNull(deserializedThread);
+        Assert.Null(deserializedThread.StorageLocation);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> serialization only includes messages for InMemoryMessages storage type.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonSerialization_OnlyIncludesMessagesForInMemoryStorage()
+    {
+        // Arrange - Create thread with conversation ID (server-side storage)
+        var threadWithId = new ChatClientAgentThread("test-id");
+
+        // Act
+        string json = JsonSerializer.Serialize(threadWithId);
+
+        // Assert - Messages should not be included for ConversationId storage, and storageLocation is not serialized
+        Assert.DoesNotContain("\"messages\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"storageLocation\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"id\":\"test-id\"", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> serialization includes messages for InMemoryMessages storage type.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonSerialization_IncludesMessagesForInMemoryStorage()
+    {
+        // Arrange - Create thread with messages (in-memory storage)
+        var messages = new[] { new ChatMessage(ChatRole.User, "Test message") };
+        var threadWithMessages = new ChatClientAgentThread(messages);
+
+        // Act
+        string json = JsonSerializer.Serialize(threadWithMessages);
+
+        // Assert - Messages should be included for InMemoryMessages storage, but storageLocation is not serialized
+        Assert.Contains("\"messages\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"storageLocation\"", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Test message", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> deserialization handles missing properties gracefully.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonDeserialization_HandlesMissingProperties()
+    {
+        // Arrange - JSON with minimal properties
+        string minimalJson = "{}";
+
+        // Act
+        var thread = JsonSerializer.Deserialize<ChatClientAgentThread>(minimalJson);
+
+        // Assert
+        Assert.NotNull(thread);
+        Assert.Null(thread.Id);
+        Assert.Null(thread.StorageLocation);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> deserialization handles invalid JSON gracefully.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonDeserialization_HandlesMalformedJson()
+    {
+        // Arrange - Invalid JSON structure
+        string invalidJson = "{ invalid json";
+
+        // Act & Assert
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ChatClientAgentThread>(invalidJson));
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> deserialization handles invalid storage location values.
+    /// This test is no longer relevant since storageLocation is not independently deserialized.
+    /// </summary>
+    [Fact]
+    public void VerifyJsonDeserialization_HandlesInvalidStorageLocation()
+    {
+        // Arrange - JSON with ID (which will set storage location to ConversationId)
+        string jsonWithId = @"{""id"":""test""}";
+
+        // Act
+        var thread = JsonSerializer.Deserialize<ChatClientAgentThread>(jsonWithId);
+
+        // Assert - Storage location is determined by presence of ID
+        Assert.NotNull(thread);
+        Assert.Equal("test", thread.Id);
+        Assert.Equal(ChatClientAgentThreadType.ConversationId, thread.StorageLocation);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> deserialization preserves messages correctly.
+    /// </summary>
+    [Fact]
+    public async Task VerifyJsonDeserialization_PreservesMessagesCorrectlyAsync()
+    {
+        // Arrange - Create a thread with messages and serialize it to get the correct format
+        var originalMessages = new[]
+        {
+            new ChatMessage(ChatRole.User, "Hello"),
+            new ChatMessage(ChatRole.Assistant, "Hi there!")
+        };
+        var originalThread = new ChatClientAgentThread(originalMessages);
+
+        // Serialize to get the actual format, then deserialize
+        string json = JsonSerializer.Serialize(originalThread);
+        var thread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+
+        // Assert
+        Assert.NotNull(thread);
+        Assert.Equal(ChatClientAgentThreadType.InMemoryMessages, thread.StorageLocation);
+
+        var messages = await thread.GetMessagesAsync().ToListAsync();
+        Assert.Equal(2, messages.Count);
+        Assert.Equal(ChatRole.User, messages[0].Role);
+        Assert.Equal("Hello", messages[0].Text);
+        Assert.Equal(ChatRole.Assistant, messages[1].Role);
+        Assert.Equal("Hi there!", messages[1].Text);
+    }
+
+    /// <summary>
+    /// Verify that <see cref="ChatClientAgentThread"/> serialization and deserialization works with complex message content.
+    /// </summary>
+    [Fact]
+    public async Task VerifyJsonSerializationRoundTrip_ComplexMessageContentAsync()
+    {
+        // Arrange - Create messages with various content types
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.User, "Simple text message"),
+            new ChatMessage(ChatRole.Assistant, [
+                new TextContent("Mixed content: "),
+                new TextContent("multiple parts")
+            ]),
+            new ChatMessage(ChatRole.User, "Message with special characters: ñáéíóú !@#$%^&*()")
+        };
+        var originalThread = new ChatClientAgentThread(messages);
+
+        // Act
+        string json = JsonSerializer.Serialize(originalThread);
+        var deserializedThread = JsonSerializer.Deserialize<ChatClientAgentThread>(json);
+
+        // Assert
+        Assert.NotNull(deserializedThread);
+
+        var originalMessages = await originalThread.GetMessagesAsync().ToListAsync();
+        var deserializedMessages = await deserializedThread.GetMessagesAsync().ToListAsync();
+
+        Assert.Equal(originalMessages.Count, deserializedMessages.Count);
+
+        // Verify complex content is preserved
+        for (int i = 0; i < originalMessages.Count; i++)
+        {
+            Assert.Equal(originalMessages[i].Role, deserializedMessages[i].Role);
+            Assert.Equal(originalMessages[i].Text, deserializedMessages[i].Text);
+        }
     }
 
     #endregion

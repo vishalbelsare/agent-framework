@@ -1,7 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Threading.Tasks;
-
 namespace Microsoft.Extensions.AI.Agents.UnitTests.ChatCompletion;
 
 public class ChatClientAgentRunOptionsTests
@@ -16,7 +14,6 @@ public class ChatClientAgentRunOptionsTests
         var runOptions = new ChatClientAgentRunOptions();
 
         // Assert
-        Assert.Null(runOptions.OnIntermediateMessages);
         Assert.Null(runOptions.ChatOptions);
     }
 
@@ -33,7 +30,6 @@ public class ChatClientAgentRunOptionsTests
         var runOptions = new ChatClientAgentRunOptions(null, chatOptions);
 
         // Assert
-        Assert.Null(runOptions.OnIntermediateMessages);
         Assert.Same(chatOptions, runOptions.ChatOptions);
     }
 
@@ -44,17 +40,13 @@ public class ChatClientAgentRunOptionsTests
     public void ConstructorCopiesPropertiesFromSourceAgentRunOptions()
     {
         // Arrange
-        var sourceRunOptions = new AgentRunOptions
-        {
-            OnIntermediateMessages = messages => Task.CompletedTask
-        };
+        var sourceRunOptions = new AgentRunOptions();
         var chatOptions = new ChatOptions { MaxOutputTokens = 200 };
 
         // Act
         var runOptions = new ChatClientAgentRunOptions(sourceRunOptions, chatOptions);
 
         // Assert
-        Assert.Same(sourceRunOptions.OnIntermediateMessages, runOptions.OnIntermediateMessages);
         Assert.Same(chatOptions, runOptions.ChatOptions);
     }
 
@@ -65,16 +57,12 @@ public class ChatClientAgentRunOptionsTests
     public void ConstructorWorksWithSourceButNullChatOptions()
     {
         // Arrange
-        var sourceRunOptions = new AgentRunOptions
-        {
-            OnIntermediateMessages = messages => Task.CompletedTask
-        };
+        var sourceRunOptions = new AgentRunOptions();
 
         // Act
         var runOptions = new ChatClientAgentRunOptions(sourceRunOptions, null);
 
         // Assert
-        Assert.Same(sourceRunOptions.OnIntermediateMessages, runOptions.OnIntermediateMessages);
         Assert.Null(runOptions.ChatOptions);
     }
 

@@ -1,11 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Agents.Orchestration;
-using Microsoft.Agents.Orchestration.Handoff;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 
 namespace Orchestration;
 
@@ -46,13 +45,10 @@ public class HandoffOrchestration_With_StructuredInput(ITestOutputHelper output)
         OrchestrationMonitor monitor = new();
 
         // Define the orchestration
-        HandoffOrchestration<GithubIssue, string> orchestration =
-            new(OrchestrationHandoffs
+        HandoffOrchestration orchestration =
+            new(Handoffs
                     .StartWith(triageAgent)
-                    .Add(triageAgent, dotnetAgent, pythonAgent),
-                triageAgent,
-                pythonAgent,
-                dotnetAgent)
+                    .Add(triageAgent, [dotnetAgent, pythonAgent]))
             {
                 LoggerFactory = this.LoggerFactory,
                 ResponseCallback = monitor.ResponseCallback,
@@ -83,18 +79,11 @@ public class HandoffOrchestration_With_StructuredInput(ITestOutputHelper output)
                 Labels = []
             };
 
-        // Start the runtime
-        await using InProcessRuntime runtime = new();
-        await runtime.StartAsync();
-
         // Run the orchestration
         Console.WriteLine($"\n# INPUT:\n{input.Id}: {input.Title}\n");
-        OrchestrationResult<string> result = await orchestration.InvokeAsync(input, runtime);
-        string text = await result.GetValueAsync(TimeSpan.FromSeconds(ResultTimeoutInSeconds));
-        Console.WriteLine($"\n# RESULT: {text}");
+        AgentRunResponse result = await orchestration.RunAsync(JsonSerializer.Serialize(input));
+        Console.WriteLine($"\n# RESULT: {result}");
         Console.WriteLine($"\n# LABELS: {string.Join(",", githubPlugin.Labels["12345"])}\n");
-
-        await runtime.RunUntilIdleAsync();
     }
 
     private sealed class GithubIssue

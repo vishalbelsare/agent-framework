@@ -2,9 +2,16 @@
 name = "agent-framework-project"
 description = "Microsoft Agent Framework for building AI Agents with Python."
 version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "agent-framework",
+    "agent-framework-azure",
+    "agent-framework-foundry",
+]
 
 [dependency-groups]
 dev = [
+    "uv>=0.8.2,<0.9.0",
     "pre-commit >= 3.7",
     "ruff>=0.11.8",
     "pytest>=8.4.1",
@@ -14,7 +21,6 @@ dev = [
     "pytest-timeout>=2.3.1",
     "mypy>=1.16.1",
     "pyright>=1.1.402",
-
     #tasks
     "poethepoet>=0.36.0",
     "rich",
@@ -49,15 +55,13 @@ environments = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = [ "packages/*" ]
+exclude = [ "packages/agent_framework_project.egg-info" ]
 
 [tool.uv.sources]
 agent-framework = { workspace = true }
-agent-framework-openai = { workspace = true }
 agent-framework-azure = { workspace = true }
-
-[tool.uv-dynamic-versioning]
-fallback-version = "0.0.0"
+agent-framework-foundry = { workspace = true }
 
 [tool.ruff]
 line-length = 120
@@ -104,7 +108,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Ignore all directories named `tests` and `samples`.
 "**/tests/**" = ["D", "INP", "TD", "ERA001", "RUF", "S"]
-"samples/**" = ["D", "INP", "ERA001", "RUF", "S"]
+"samples/**" = ["D", "INP", "ERA001", "RUF", "S", "T201"]
 "*.ipynb" = ["CPY", "E501"]
 
 [tool.ruff.format]
@@ -141,13 +145,13 @@ disallow_any_unimported = true
 
 [tool.bandit]
 targets = ["agent_framework"]
-exclude_dirs = ["tests", "./run_tasks_in_packages_if_exists.py", "./check_md_code_blocks.py", "docs"]
+exclude_dirs = ["tests", "./run_tasks_in_packages_if_exists.py", "./check_md_code_blocks.py", "docs", "samples"]
 
 [tool.poe]
 executor.type = "uv"
 
 [tool.poe.tasks]
-markdown-code-lint = """python check_md_code_blocks.py ../README.md ./docs/agent-framework/**/*.md README.md"""
+markdown-code-lint = """python check_md_code_blocks.py ./docs/agent-framework/**/*.md README.md"""
 samples-code-check = """pyright ./samples"""
 docs-clean = "rm -rf docs/build"
 docs-build = "sphinx-build docs/agent-framework docs/build"
@@ -155,7 +159,7 @@ docs-serve = "sphinx-autobuild --watch docs/agent-framework docs/build --port 80
 docs-check = "sphinx-build --fail-on-warning docs/agent-framework docs/build"
 docs-check-examples = "sphinx-build -b code_lint docs/agent-framework docs/build"
 pre-commit-install = "uv run pre-commit install --install-hooks --overwrite"
-install = "uv sync --all-packages --all-extras --dev -U --prerelease=if-necessary-or-explicit"
+install = "uv sync --all-packages --dev -U --prerelease=if-necessary-or-explicit"
 test = "python run_tasks_in_packages_if_exists.py test"
 fmt = "python run_tasks_in_packages_if_exists.py fmt"
 format.ref = "fmt"
@@ -168,7 +172,7 @@ check = ["fmt", "lint", "pyright", "mypy", "test", "markdown-code-lint", "sample
 pre-commit-check = ["fmt", "lint", "pyright", "markdown-code-lint", "samples-code-check"]
 
 [tool.poe.tasks.venv]
-cmd = "uv venv --python $python"
+cmd = "uv venv --clear --python $python"
 args = [{ name = "python", default = "3.13", options = ['-p', '--python'] }]
 [tool.poe.tasks.setup]
 sequence = [
@@ -177,3 +181,25 @@ sequence = [
     { ref = "pre-commit-install" }
 ]
 args = [{ name = "python", default = "3.13", options = ['-p', '--python'] }]
+
+
+[tool.setuptools.packages.find]
+where = ["packages"]
+include = ["agent_framework**"]
+namespaces = true
+
+[tool.tox]
+requires = ["tox>=4", "tox-uv>=1"]
+env_list = [ "3.13"] #, "3.12", "3.11", "3.10" ]
+
+[tool.tox.env_run_base]
+no_package = true
+description = "run tests"
+dependency_groups = [
+  "dev",
+]
+deps = [
+    "-e packages/azure",
+    "-e packages/main"
+]
+commands = [["pytest", { replace = "posargs", default = ["packages/main/tests"], extend = true }]]

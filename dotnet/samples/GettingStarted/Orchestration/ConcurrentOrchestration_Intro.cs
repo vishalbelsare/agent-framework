@@ -1,9 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Agents.Orchestration;
-using Microsoft.Agents.Orchestration.Concurrent;
 using Microsoft.Extensions.AI.Agents;
-using Microsoft.Extensions.AI.Agents.Runtime.InProcess;
 
 namespace Orchestration;
 
@@ -42,19 +40,12 @@ public class ConcurrentOrchestration_Intro(ITestOutputHelper output) : Orchestra
                 StreamingResponseCallback = streamedResponse ? monitor.StreamingResultCallback : null,
             };
 
-        // Start the runtime
-        await using InProcessRuntime runtime = new();
-        await runtime.StartAsync();
-
         // Run the orchestration
         string input = "What is temperature?";
         Console.WriteLine($"\n# INPUT: {input}\n");
-        OrchestrationResult<string[]> result = await orchestration.InvokeAsync(input, runtime);
+        AgentRunResponse result = await orchestration.RunAsync(input);
 
-        string[] output = await result.GetValueAsync(TimeSpan.FromSeconds(ResultTimeoutInSeconds));
-        Console.WriteLine($"\n# RESULT:\n{string.Join("\n\n", output.Select(text => $"{text}"))}");
-
-        await runtime.RunUntilIdleAsync();
+        Console.WriteLine($"\n# RESULT:\n{string.Join("\n\n", result.Messages.Select(r => $"{r.Text}"))}");
 
         this.DisplayHistory(monitor.History);
     }

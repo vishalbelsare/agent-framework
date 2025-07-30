@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
-using System.Threading.Tasks;
 
 namespace Microsoft.Extensions.AI.Agents.Abstractions.UnitTests;
 
@@ -14,16 +13,10 @@ public class AgentRunOptionsTests
     public void CloningConstructorCopiesProperties()
     {
         // Arrange
-        var options = new AgentRunOptions
-        {
-            OnIntermediateMessages = msg => Task.CompletedTask
-        };
+        var options = new AgentRunOptions();
 
         // Act
         var clone = new AgentRunOptions(options);
-
-        // Assert
-        Assert.Equal(options.OnIntermediateMessages, clone.OnIntermediateMessages);
     }
 
     [Fact]

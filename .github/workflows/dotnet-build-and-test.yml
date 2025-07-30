@@ -14,6 +14,13 @@ on:
       - '.github/workflows/dotnet-build-and-test.yml'
   merge_group:
     branches: ["main"]
+  push:
+    branches: ["main", "feature*"]
+    paths:
+      - dotnet/**
+      - '.github/workflows/dotnet-build-and-test.yml'
+  schedule:
+    - cron: "0 0 * * *" # Run at midnight UTC daily
 
 env:
   COVERAGE_THRESHOLD: 80
@@ -56,7 +63,7 @@ jobs:
         run: |
           export SOLUTIONS=$(find ./dotnet/ -type f -name "*.slnx" | tr '\n' ' ')
           for solution in $SOLUTIONS; do
-            dotnet build $solution -f ${{ matrix.targetFramework }} -c ${{ matrix.configuration }} --warnaserror
+            dotnet build $solution -c ${{ matrix.configuration }} --warnaserror
           done
       - name: Package install check
         shell: bash
@@ -71,7 +78,7 @@ jobs:
             dotnet pack $solution /property:TargetFrameworks=${{ matrix.targetFramework }} -c ${{ matrix.configuration }} --no-build --no-restore --output "$TEMP_DIR/artifacts"
           done
 
-          cd "$TEMP_DIR"
+          pushd "$TEMP_DIR"
 
           # Create a new console app to test the package installation
           dotnet new console -f ${{ matrix.targetFramework }} --name packcheck --output consoleapp
@@ -84,13 +91,13 @@ jobs:
           dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org --configfile consoleapp/nuget.config
 
           # Change to project directory to ensure local nuget.config is used
-          cd consoleapp
+          pushd consoleapp
           dotnet add packcheck.csproj package Microsoft.Extensions.AI.Agents --prerelease
           dotnet build -f ${{ matrix.targetFramework }} -c ${{ matrix.configuration }} packcheck.csproj
 
           # Clean up
-          cd ..
-          cd ..
+          popd
+          popd
           rm -rf "$TEMP_DIR"
 
       - name: Run Unit Tests Windows
@@ -106,7 +113,7 @@ jobs:
         run: echo "github.event_name:${{ github.event_name }} matrix.integration-tests:${{ matrix.integration-tests }} github.event.action:${{ github.event.action }} github.event.pull_request.merged:${{ github.event.pull_request.merged }}" 
 
       - name: Azure CLI Login
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && matrix.integration-tests
+        if: github.event_name != 'pull_request' && matrix.integration-tests
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -115,7 +122,7 @@ jobs:
 
       - name: Run Integration Tests
         shell: bash
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && matrix.integration-tests
+        if: github.event_name != 'pull_request' && matrix.integration-tests
         run: |
           export INTEGRATION_TEST_PROJECTS=$(find ./dotnet -type f -name "*IntegrationTests.csproj" | tr '\n' ' ')
           for project in $INTEGRATION_TEST_PROJECTS; do
@@ -132,7 +139,7 @@ jobs:
 
       # Generate test reports and check coverage
       - name: Generate test reports
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.4.4
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.4.10
         with:
           reports: "./TestResults/Coverage/**/coverage.cobertura.xml"
           targetdir: "./TestResults/Reports"
@@ -180,13 +187,13 @@ jobs:
       - name: Fail workflow if tests failed
         id: check_tests_failed
         if: contains(join(needs.*.result, ','), 'failure')
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: core.setFailed('Integration Tests Failed!')
 
       - name: Fail workflow if tests cancelled
         id: check_tests_cancelled
         if: contains(join(needs.*.result, ','), 'cancelled')
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: core.setFailed('Integration Tests Cancelled!')

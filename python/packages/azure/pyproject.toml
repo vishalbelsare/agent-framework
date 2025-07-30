@@ -5,7 +5,7 @@ authors = [{ name = "Microsoft", email = "SK-Support@microsoft.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
 version = "0.1.0b1"
-license = {file = "../../LICENSE"}
+license-files = ["LICENSE"]
 urls.homepage = "https://learn.microsoft.com/en-us/semantic-kernel/overview/"
 urls.source = "https://github.com/microsoft/agent-framework/tree/main/python"
 urls.release_notes = "https://github.com/microsoft/agent-framework/releases?q=tag%3Apython-1&expanded=true"
@@ -24,9 +24,19 @@ classifiers = [
 ]
 dependencies = [
     "agent-framework",
-    "agent-framework-openai"
+    "azure-identity >= 1.13"
 ]
 
+[tool.uv]
+prerelease = "if-necessary-or-explicit"
+environments = [
+    "sys_platform == 'darwin'",
+    "sys_platform == 'linux'",
+    "sys_platform == 'win32'"
+]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
 [tool.pytest.ini_options]
 testpaths = 'tests'
 addopts = "-ra -q -r fEX"
@@ -58,18 +68,19 @@ disallow_untyped_decorators = true
 disallow_any_unimported = true
 
 [tool.bandit]
-targets = ["agent_framework"]
+targets = ["agent_framework_azure"]
 exclude_dirs = ["tests"]
 
 [tool.poe]
 executor.type = "uv"
 include = "../../shared_tasks.toml"
+[tool.poe.tasks]
+mypy = "mypy --config-file $POE_ROOT/pyproject.toml agent_framework_azure"
 
 [tool.uv.build-backend]
-module-name = "agent_framework.azure"
+module-name = "agent_framework_azure"
 module-root = ""
-namespace = true
 
 [build-system]
-requires = ["uv_build>=0.7.19,<0.8.0"]
+requires = ["uv_build>=0.8.2,<0.9.0"]
 build-backend = "uv_build"

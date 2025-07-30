@@ -4,15 +4,32 @@ import base64
 import json
 import re
 import sys
-from collections.abc import AsyncIterable, Iterable, Iterator, Mapping, MutableSequence, Sequence
+from collections.abc import (
+    AsyncIterable,
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    Sequence,
+)
 from typing import Annotated, Any, ClassVar, Generic, Literal, TypeVar, overload
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
-
-from agent_framework.exceptions import AgentFrameworkException
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from ._pydantic import AFBaseModel
-from ._tools import AITool
+from ._tools import AITool, ai_function
+from .exceptions import AgentFrameworkException
 
 if sys.version_info >= (3, 11):
     from typing import Self  # pragma: no cover
@@ -25,6 +42,7 @@ TValue = TypeVar("TValue")
 TEmbedding = TypeVar("TEmbedding")
 TChatResponse = TypeVar("TChatResponse", bound="ChatResponse")
 TChatToolMode = TypeVar("TChatToolMode", bound="ChatToolMode")
+TAgentRunResponse = TypeVar("TAgentRunResponse", bound="AgentRunResponse")
 
 CreatedAtT = str  # Use a datetimeoffset type? Or a more specific type like datetime.datetime?
 
@@ -54,6 +72,35 @@ KNOWN_MEDIA_TYPES = [
     "text/plain",
     "text/plain;charset=UTF-8",
     "text/xml",
+]
+
+
+__all__ = [
+    "AIContent",
+    "AIContents",
+    "AITool",
+    "AgentRunResponse",
+    "AgentRunResponseUpdate",
+    "ChatFinishReason",
+    "ChatMessage",
+    "ChatOptions",
+    "ChatResponse",
+    "ChatResponseUpdate",
+    "ChatRole",
+    "ChatToolMode",
+    "DataContent",
+    "ErrorContent",
+    "FunctionCallContent",
+    "FunctionResultContent",
+    "GeneratedEmbeddings",
+    "SpeechToTextOptions",
+    "StructuredResponse",
+    "TextContent",
+    "TextReasoningContent",
+    "TextToSpeechOptions",
+    "UriContent",
+    "UsageContent",
+    "UsageDetails",
 ]
 
 
@@ -152,10 +199,16 @@ class UsageDetails(AFBaseModel):
         return self
 
 
-def _process_update(response: "ChatResponse", update: "ChatResponseUpdate") -> None:
+def _process_update(
+    response: "ChatResponse | AgentRunResponse", update: "ChatResponseUpdate | AgentRunResponseUpdate"
+) -> None:
     """Processes a single update and modifies the response in place."""
     is_new_message = False
-    if not response.messages or (update.message_id and response.messages[-1].message_id != update.message_id):
+    if (
+        not response.messages
+        or (update.message_id and response.messages[-1].message_id != update.message_id)
+        or (update.role and response.messages[-1].role != update.role)
+    ):
         is_new_message = True
 
     if is_new_message:
@@ -189,18 +242,20 @@ def _process_update(response: "ChatResponse", update: "ChatResponseUpdate") -> N
     # Incorporate the update's properties into the response.
     if update.response_id:
         response.response_id = update.response_id
-    if update.conversation_id is not None:
-        response.conversation_id = update.conversation_id
     if update.created_at is not None:
         response.created_at = update.created_at
-    if update.finish_reason is not None:
-        response.finish_reason = update.finish_reason
-    if update.ai_model_id is not None:
-        response.ai_model_id = update.ai_model_id
     if update.additional_properties is not None:
         if response.additional_properties is None:
             response.additional_properties = {}
         response.additional_properties.update(update.additional_properties)
+
+    if isinstance(response, ChatResponse) and isinstance(update, ChatResponseUpdate):
+        if update.conversation_id is not None:
+            response.conversation_id = update.conversation_id
+        if update.finish_reason is not None:
+            response.finish_reason = update.finish_reason
+        if update.ai_model_id is not None:
+            response.ai_model_id = update.ai_model_id
 
 
 def _coalesce_text_content(
@@ -219,7 +274,7 @@ def _coalesce_text_content(
                 first_new_content = i
         else:
             if first_new_content is not None:
-                new_content = type_(text="\n".join(current_texts))
+                new_content = type_(text="".join(current_texts))
                 new_content.raw_representation = contents[first_new_content].raw_representation
                 new_content.additional_properties = contents[first_new_content].additional_properties
                 # Store the replacement node. We inherit the properties of the first text node. We don't
@@ -230,13 +285,13 @@ def _coalesce_text_content(
                 first_new_content = None
             coalesced_contents.append(content)
     if current_texts:
-        coalesced_contents.append(type_(text="\n".join(current_texts)))
+        coalesced_contents.append(type_(text="".join(current_texts)))
     contents.clear()
     contents.extend(coalesced_contents)
 
 
-def _finalize_response(response: "ChatResponse") -> None:
-    """Finalizes the chat response by performing any necessary post-processing."""
+def _finalize_response(response: "ChatResponse | AgentRunResponse") -> None:
+    """Finalizes the response by performing any necessary post-processing."""
     for msg in response.messages:
         _coalesce_text_content(msg.contents, TextContent)
         _coalesce_text_content(msg.contents, TextReasoningContent)
@@ -348,6 +403,7 @@ class DataContent(AIContent):
         uri: The URI of the data represented by this instance, typically in the form of a data URI.
             Should be in the form: "data:{media_type};base64,{base64_data}".
         type: The type of content, which is always "data" for this class.
+        media_type: The media type of the data.
         additional_properties: Optional additional properties associated with the content.
         raw_representation: Optional raw representation of the content.
 
@@ -355,6 +411,7 @@ class DataContent(AIContent):
 
     type: Literal["data"] = "data"  # type: ignore[assignment]
     uri: str
+    media_type: str | None = None
 
     @overload
     def __init__(
@@ -436,6 +493,7 @@ class DataContent(AIContent):
             uri = f"data:{media_type};base64,{base64.b64encode(data).decode('utf-8')}"
         super().__init__(
             uri=uri,  # type: ignore[reportCallIssue]
+            media_type=media_type,  # type: ignore[reportCallIssue]
             raw_representation=raw_representation,
             additional_properties=additional_properties,
             **kwargs,
@@ -455,6 +513,9 @@ class DataContent(AIContent):
         if media_type not in KNOWN_MEDIA_TYPES:
             raise ValueError(f"Unknown media type: {media_type}")
         return uri
+
+    def has_top_level_media_type(self, top_level_media_type: str) -> bool:
+        return _has_top_level_media_type(self.media_type, top_level_media_type)
 
 
 class UriContent(AIContent):
@@ -508,6 +569,19 @@ class UriContent(AIContent):
             raw_representation=raw_representation,
             **kwargs,
         )
+
+    def has_top_level_media_type(self, top_level_media_type: str) -> bool:
+        return _has_top_level_media_type(self.media_type, top_level_media_type)
+
+
+def _has_top_level_media_type(media_type: str | None, top_level_media_type: str) -> bool:
+    if media_type is None:
+        return False
+
+    slash_index = media_type.find("/")
+    span = media_type[:slash_index] if slash_index >= 0 else media_type
+    span = span.strip()
+    return span.lower() == top_level_media_type.lower()
 
 
 class ErrorContent(AIContent):
@@ -642,7 +716,7 @@ class FunctionCallContent(AIContent):
     def __add__(self, other: "FunctionCallContent") -> "FunctionCallContent":
         if not isinstance(other, FunctionCallContent):
             raise TypeError("Incompatible type")
-        if self.call_id != other.call_id:
+        if other.call_id and self.call_id != other.call_id:
             raise AgentFrameworkException("Incompatible function call contents")
         if not self.arguments:
             arguments = other.arguments
@@ -875,15 +949,6 @@ class ChatMessage(AFBaseModel):
     raw_representation: Any | None = None
     """The raw representation of the chat message from an underlying implementation."""
 
-    @property
-    def text(self) -> str:
-        """Returns the text content of the message.
-
-        Remarks:
-            This property concatenates the text of all TextContent objects in Contents.
-        """
-        return "\n".join(content.text for content in self.contents if isinstance(content, TextContent))
-
     @overload
     def __init__(
         self,
@@ -911,7 +976,7 @@ class ChatMessage(AFBaseModel):
         self,
         role: ChatRole | Literal["system", "user", "assistant", "tool"],
         *,
-        contents: list[AIContents],
+        contents: MutableSequence[AIContents],
         author_name: str | None = None,
         message_id: str | None = None,
         additional_properties: dict[str, Any] | None = None,
@@ -933,7 +998,7 @@ class ChatMessage(AFBaseModel):
         role: ChatRole | Literal["system", "user", "assistant", "tool"],
         *,
         text: str | None = None,
-        contents: list[AIContents] | None = None,
+        contents: MutableSequence[AIContents] | None = None,
         author_name: str | None = None,
         message_id: str | None = None,
         additional_properties: dict[str, Any] | None = None,
@@ -953,6 +1018,15 @@ class ChatMessage(AFBaseModel):
             additional_properties=additional_properties,  # type: ignore[reportCallIssue]
             raw_representation=raw_representation,  # type: ignore[reportCallIssue]
         )
+
+    @property
+    def text(self) -> str:
+        """Returns the text content of the message.
+
+        Remarks:
+            This property concatenates the text of all TextContent objects in Contents.
+        """
+        return " ".join(content.text for content in self.contents if isinstance(content, TextContent))
 
 
 # region: ChatResponse
@@ -1118,7 +1192,10 @@ class ChatResponse(AFBaseModel):
     @property
     def text(self) -> str:
         """Returns the concatenated text of all messages in the response."""
-        return "\n".join(message.text for message in self.messages if isinstance(message, ChatMessage))
+        return ("\n".join(message.text for message in self.messages if isinstance(message, ChatMessage))).strip()
+
+    def __str__(self) -> str:
+        return self.text
 
 
 class StructuredResponse(ChatResponse, Generic[TValue]):
@@ -1338,7 +1415,10 @@ class ChatResponseUpdate(AFBaseModel):
     @property
     def text(self) -> str:
         """Returns the concatenated text of all contents in the update."""
-        return "\n".join(content.text for content in self.contents if isinstance(content, TextContent))
+        return "".join(content.text for content in self.contents if isinstance(content, TextContent))
+
+    def __str__(self) -> str:
+        return self.text
 
     def with_(self, contents: list[AIContent] | None = None, message_id: str | None = None) -> Self:
         """Returns a new instance with the specified contents and message_id."""
@@ -1379,6 +1459,11 @@ class ChatToolMode(AFBaseModel):
             return self.mode == other.mode and self.required_function_name == other.required_function_name
         return False
 
+    @model_serializer
+    def serialize_model(self) -> str:
+        """Serializes the ChatToolMode to just the mode string."""
+        return self.mode
+
 
 ChatToolMode.AUTO = ChatToolMode(mode="auto")  # type: ignore[assignment]
 ChatToolMode.REQUIRED_ANY = ChatToolMode(mode="required")  # type: ignore[assignment]
@@ -1388,35 +1473,72 @@ ChatToolMode.NONE = ChatToolMode(mode="none")  # type: ignore[assignment]
 class ChatOptions(AFBaseModel):
     """Common request settings for AI services."""
 
+    additional_properties: MutableMapping[str, Any] = Field(
+        default_factory=dict, description="Provider-specific additional properties."
+    )
     ai_model_id: Annotated[str | None, Field(serialization_alias="model")] = None
+    allow_multiple_tool_calls: bool | None = None
+    conversation_id: str | None = None
+    frequency_penalty: Annotated[float | None, Field(ge=-2.0, le=2.0)] = None
+    logit_bias: MutableMapping[str | int, float] | None = None
     max_tokens: Annotated[int | None, Field(gt=0)] = None
-    temperature: Annotated[float | None, Field(ge=0.0, le=2.0)] = None
-    top_p: Annotated[float | None, Field(ge=0.0, le=1.0)] = None
-    tool_choice: ChatToolMode | Literal["auto", "required", "none"] | Mapping[str, Any] | None = None
-    tools: Sequence[AITool] | Sequence[Mapping[str, Any]] | None = None
+    metadata: MutableMapping[str, str] | None = None
+    presence_penalty: Annotated[float | None, Field(ge=-2.0, le=2.0)] = None
     response_format: type[BaseModel] | None = Field(
         default=None, description="Structured output response format schema. Must be a valid Pydantic model."
     )
-    user: str | None = None
-    stop: str | Sequence[str] | None = None
-    frequency_penalty: Annotated[float | None, Field(ge=-2.0, le=2.0)] = None
-    logit_bias: Mapping[str | int, float] | None = None
-    presence_penalty: Annotated[float | None, Field(ge=-2.0, le=2.0)] = None
     seed: int | None = None
+    stop: str | Sequence[str] | None = None
     store: bool | None = None
-    metadata: Mapping[str, str] | None = None
-    additional_properties: Mapping[str, Any] = Field(
-        default_factory=dict, description="Provider-specific additional properties."
-    )
+    temperature: Annotated[float | None, Field(ge=0.0, le=2.0)] = None
+    tool_choice: ChatToolMode | Literal["auto", "required", "none"] | Mapping[str, Any] | None = None
+    tools: list[AITool | MutableMapping[str, Any]] | None = None
+    top_p: Annotated[float | None, Field(ge=0.0, le=1.0)] = None
+    user: str | None = None
+    _ai_tools: list[AITool | MutableMapping[str, Any]] | None = PrivateAttr(default=None)
+
+    @model_validator(mode="after")
+    def _copy_to_ai_tools(self) -> Self:
+        if self.tools and not self._ai_tools:
+            self._ai_tools = self.tools
+        return self
+
+    @field_validator("tools", mode="before")
+    @classmethod
+    def _validate_tools(
+        cls,
+        tools: (
+            AITool
+            | list[AITool]
+            | Callable[..., Any]
+            | list[Callable[..., Any]]
+            | MutableMapping[str, Any]
+            | list[MutableMapping[str, Any]]
+            | None
+        ),
+    ) -> list[AITool | MutableMapping[str, Any]] | None:
+        """Parse the tools field.
+
+        All tools are stored in both tools and _ai_tools.
+        """
+        if not tools:
+            return None
+        if not isinstance(tools, list):
+            tools = [tools]  # type: ignore[reportAssignmentType, assignment]
+        for idx, tool in enumerate(tools):  # type: ignore[reportArgumentType, arg-type]
+            if not isinstance(tool, (AITool, MutableMapping)):
+                # Convert to AITool if it's a function or callable
+                tools[idx] = ai_function(tool)  # type: ignore[reportIndexIssues, reportCallIssue, reportArgumentType, index, call-overload, arg-type]
+        return tools  # type: ignore[reportReturnType, return-value]
 
     @field_validator("tool_choice", mode="before")
     @classmethod
     def _validate_tool_mode(
         cls, tool_choice: ChatToolMode | Literal["auto", "required", "none"] | Mapping[str, Any] | None
-    ) -> ChatToolMode:
+    ) -> ChatToolMode | None:
         """Validates the tool_choice field to ensure it is a valid ChatToolMode."""
         if not tool_choice:
-            return ChatToolMode.NONE
+            return None
         if isinstance(tool_choice, str):
             match tool_choice:
                 case "auto":
@@ -1442,14 +1564,43 @@ class ChatOptions(AFBaseModel):
             Dictionary of settings for provider.
         """
         default_exclude = {"additional_properties"}
+        # No tool choice if no tools are defined
+        if self.tools is None or len(self.tools) == 0:
+            default_exclude.add("tool_choice")
         merged_exclude = default_exclude if exclude is None else default_exclude | set(exclude)
 
         settings = self.model_dump(exclude_none=True, by_alias=by_alias, exclude=merged_exclude)
-        settings = {k: v for k, v in settings.items() if v and not isinstance(v, dict)}
+        settings = {k: v for k, v in settings.items() if v}
         settings.update(self.additional_properties)
         for key in merged_exclude:
             settings.pop(key, None)
         return settings
+
+    def __and__(self, other: object) -> Self:
+        """Combines two ChatOptions instances.
+
+        The values from the other ChatOptions take precedence.
+        List and dicts are combined.
+        """
+        if not isinstance(other, ChatOptions):
+            return self
+        ai_tools = other._ai_tools
+        updated_values = other.model_dump(exclude_none=True)
+        updated_values.pop("tools", [])
+        logit_bias = updated_values.pop("logit_bias", {})
+        metadata = updated_values.pop("metadata", {})
+        additional_properties = updated_values.pop("additional_properties", {})
+        combined = self.model_copy(update=updated_values)
+        if ai_tools:
+            if not combined._ai_tools:
+                combined._ai_tools = []
+            for tool in ai_tools:
+                if tool not in combined._ai_tools:
+                    combined._ai_tools.append(tool)
+        combined.logit_bias = {**(combined.logit_bias or {}), **logit_bias}
+        combined.metadata = {**(combined.metadata or {}), **metadata}
+        combined.additional_properties = {**(combined.additional_properties or {}), **additional_properties}
+        return combined
 
 
 # region: GeneratedEmbeddings
@@ -1552,3 +1703,197 @@ class GeneratedEmbeddings(AFBaseModel, MutableSequence[TEmbedding], Generic[TEmb
         else:
             self.embeddings += values
         return self
+
+
+# region AgentRunResponse
+
+
+class AgentRunResponse(AFBaseModel):
+    """Represents the response to an Agent run request.
+
+    Provides one or more response messages and metadata about the response.
+    A typical response will contain a single message, but may contain multiple
+    messages in scenarios involving function calls, RAG retrievals, or complex logic.
+    """
+
+    messages: list[ChatMessage] = Field(default_factory=list[ChatMessage])
+    response_id: str | None = None
+    created_at: CreatedAtT | None = None  # use a datetimeoffset type?
+    usage_details: UsageDetails | None = None
+    raw_representation: Any | None = None
+    additional_properties: dict[str, Any] | None = None
+
+    def __init__(
+        self,
+        messages: ChatMessage | list[ChatMessage] | None = None,
+        response_id: str | None = None,
+        created_at: CreatedAtT | None = None,
+        usage_details: UsageDetails | None = None,
+        raw_representation: Any | None = None,
+        additional_properties: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize an AgentRunResponse.
+
+        Attributes:
+        messages: The list of chat messages in the response.
+        response_id: The ID of the chat response.
+        created_at: A timestamp for the chat response.
+        usage_details: The usage details for the chat response.
+        additional_properties: Any additional properties associated with the chat response.
+        raw_representation: The raw representation of the chat response from an underlying implementation.
+        **kwargs: Additional properties to set on the response.
+        """
+        processed_messages: list[ChatMessage] = []
+        if messages is not None:
+            if isinstance(messages, ChatMessage):
+                processed_messages.append(messages)
+            elif isinstance(messages, list):
+                processed_messages.extend(messages)
+
+        super().__init__(
+            messages=processed_messages,  # type: ignore[reportCallIssue]
+            response_id=response_id,  # type: ignore[reportCallIssue]
+            created_at=created_at,  # type: ignore[reportCallIssue]
+            usage_details=usage_details,  # type: ignore[reportCallIssue]
+            additional_properties=additional_properties,  # type: ignore[reportCallIssue]
+            raw_representation=raw_representation,  # type: ignore[reportCallIssue]
+            **kwargs,
+        )
+
+    @property
+    def text(self) -> str:
+        """Get the concatenated text of all messages."""
+        return "".join(msg.text for msg in self.messages) if self.messages else ""
+
+    @classmethod
+    def from_agent_run_response_updates(
+        cls: type[TAgentRunResponse], updates: Sequence["AgentRunResponseUpdate"]
+    ) -> TAgentRunResponse:
+        """Joins multiple updates into a single AgentRunResponse."""
+        msg = cls(messages=[])
+        for update in updates:
+            _process_update(msg, update)
+        _finalize_response(msg)
+        return msg
+
+    @classmethod
+    async def from_agent_response_generator(
+        cls: type[TAgentRunResponse], updates: AsyncIterable["AgentRunResponseUpdate"]
+    ) -> TAgentRunResponse:
+        """Joins multiple updates into a single AgentRunResponse."""
+        msg = cls(messages=[])
+        async for update in updates:
+            _process_update(msg, update)
+        _finalize_response(msg)
+        return msg
+
+    def __str__(self) -> str:
+        return self.text
+
+
+# region AgentRunResponseUpdate
+
+
+class AgentRunResponseUpdate(AFBaseModel):
+    """Represents a single streaming response chunk from an Agent."""
+
+    contents: list[AIContents] = Field(default_factory=list[AIContents])
+    role: ChatRole | None = None
+    author_name: str | None = None
+    response_id: str | None = None
+    message_id: str | None = None
+    created_at: CreatedAtT | None = None  # use a datetimeoffset type?
+    additional_properties: dict[str, Any] | None = None
+    raw_representation: Any | None = None
+
+    @property
+    def text(self) -> str:
+        """Get the concatenated text of all TextContent objects in contents."""
+        return (
+            "".join(content.text for content in self.contents if isinstance(content, TextContent))
+            if self.contents
+            else ""
+        )
+
+    def __str__(self) -> str:
+        return self.text
+
+
+# region: SpeechToTextOptions
+
+
+class SpeechToTextOptions(AFBaseModel):
+    """Common request settings for Speech to Text AI services."""
+
+    ai_model_id: Annotated[str | None, Field(serialization_alias="model")] = None
+    speech_language: Annotated[str | None, Field(description="Language of the input speech.")] = None
+    text_language: Annotated[str | None, Field(description="Language of the output text.")] = None
+    speech_sample_rate: Annotated[int | None, Field(description="Sample rate of the input speech.")] = None
+    additional_properties: dict[str, Any] = Field(
+        default_factory=dict, description="Provider-specific additional properties."
+    )
+
+    def to_provider_settings(self, by_alias: bool = True, exclude: set[str] | None = None) -> dict[str, Any]:
+        """Convert the SpeechToTextOptions to a dictionary suitable for provider requests.
+
+        Args:
+            by_alias: Use alias names for fields if True.
+            exclude: Additional keys to exclude from the output.
+
+        Returns:
+            Dictionary of settings for provider.
+        """
+        default_exclude = {"additional_properties"}
+        merged_exclude = default_exclude if exclude is None else default_exclude | set(exclude)
+
+        settings: dict[str, Any] = self.model_dump(exclude_none=True, by_alias=by_alias, exclude=merged_exclude)
+        settings = {k: v for k, v in settings.items() if not (isinstance(v, dict) and not v)}
+        settings.update(self.additional_properties)
+        for key in merged_exclude:
+            settings.pop(key, None)
+        return settings
+
+
+# region: TextToSpeechOptions
+
+
+class TextToSpeechOptions(AFBaseModel):
+    """Request settings for text to speech services.
+
+    Tailor this to be more general as more models (aside from OpenAI) are added.
+    """
+
+    ai_model_id: str | None = Field(None, serialization_alias="model")
+    voice: Literal["alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"] = "alloy"
+    response_format: Literal["mp3", "opus", "aac", "flac", "wav", "pcm"] | None = None
+    speed: Annotated[float | None, Field(ge=0.25, le=4.0)] = None
+    additional_properties: dict[str, Any] = Field(
+        default_factory=dict, description="Provider-specific additional properties."
+    )
+
+    def to_provider_settings(self, by_alias: bool = True, exclude: set[str] | None = None) -> dict[str, Any]:
+        """Convert the SpeechToTextOptions to a dictionary suitable for provider requests.
+
+        Args:
+            by_alias: Use alias names for fields if True.
+            exclude: Additional keys to exclude from the output.
+
+        Returns:
+            Dictionary of settings for provider.
+        """
+        default_exclude = {"additional_properties"}
+        merged_exclude = default_exclude if exclude is None else default_exclude | set(exclude)
+
+        settings: dict[str, Any] = self.model_dump(exclude_none=True, by_alias=by_alias, exclude=merged_exclude)
+        settings = {k: v for k, v in settings.items() if not (isinstance(v, dict) and not v)}
+        settings.update(self.additional_properties)
+        for key in merged_exclude:
+            settings.pop(key, None)
+        return settings
+
+
+# endregion
+
+
+# endregion
