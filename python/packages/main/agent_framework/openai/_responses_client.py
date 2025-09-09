@@ -797,6 +797,24 @@ class OpenAIBaseResponsesClient(OpenAIBase, BaseChatClient):
                     "type": "output_text" if role == Role.ASSISTANT else "input_text",
                     "text": content.text,
                 }
+            case DataContent():
+                # Check if this is image content
+                if content.has_top_level_media_type("image"):
+                    return {
+                        "type": "image_url",
+                        "image_url": {"url": content.uri}
+                    }
+                # For non-image data, fallback to model_dump
+                return content.model_dump(exclude_none=True)
+            case UriContent():
+                # Check if this is image content
+                if content.has_top_level_media_type("image"):
+                    return {
+                        "type": "image_url",
+                        "image_url": {"url": content.uri}
+                    }
+                # For non-image URIs, fallback to model_dump
+                return content.model_dump(exclude_none=True)
             # TODO(peterychang): We'll probably need to specialize the other content types as well
             case _:
                 return content.model_dump(exclude_none=True)

@@ -24,11 +24,13 @@ from .._types import (
     ChatResponse,
     ChatResponseUpdate,
     Contents,
+    DataContent,
     FinishReason,
     FunctionCallContent,
     FunctionResultContent,
     Role,
     TextContent,
+    UriContent,
     UsageContent,
     UsageDetails,
 )
@@ -359,6 +361,24 @@ class OpenAIBaseChatClient(OpenAIBase, BaseChatClient):
                     "tool_call_id": content.call_id,
                     "content": content.result,
                 }
+            case DataContent():
+                # Check if this is image content
+                if content.has_top_level_media_type("image"):
+                    return {
+                        "type": "image_url",
+                        "image_url": {"url": content.uri}
+                    }
+                # For non-image data, fallback to model_dump
+                return content.model_dump(exclude_none=True)
+            case UriContent():
+                # Check if this is image content
+                if content.has_top_level_media_type("image"):
+                    return {
+                        "type": "image_url",
+                        "image_url": {"url": content.uri}
+                    }
+                # For non-image URIs, fallback to model_dump
+                return content.model_dump(exclude_none=True)
             case _:
                 return content.model_dump(exclude_none=True)
 
