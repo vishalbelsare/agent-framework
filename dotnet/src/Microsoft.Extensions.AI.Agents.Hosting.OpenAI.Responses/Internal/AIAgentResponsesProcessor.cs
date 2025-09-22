@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
@@ -17,7 +16,9 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
 internal class AIAgentResponsesProcessor
 {
+#pragma warning disable IDE0052 // Remove unread private members
     private readonly ILogger _logger;
+#pragma warning restore IDE0052 // Remove unread private members
     private readonly AgentProxy _agentProxy;
 
     public AIAgentResponsesProcessor(AgentProxy agentProxy, ILoggerFactory? loggerFactory = null)
@@ -28,7 +29,7 @@ internal class AIAgentResponsesProcessor
 
     public Task<Model.OpenAIResponse> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
-        var conversationId = createResponse.Conversation.GetConversationId();
+        var conversationId = createResponse.Conversation.ConversationId;
         var agentThread = conversationId is not null ? this._agentProxy.GetThread(conversationId) : this._agentProxy.GetNewThread();
 
         var options = new OpenAIResponsesRunOptions();
@@ -73,9 +74,9 @@ internal class AIAgentResponsesProcessor
         AgentRunOptions options,
         CancellationToken cancellationToken)
     {
-        var chatMessages = createResponse.Input.
+        var chatMessages = createResponse.Input?.ToChatMessages() ?? [];
 
-        var agentResponse = await this._agentProxy.RunAsync(messages, thread, options, cancellationToken).ConfigureAwait(false);
+        var agentResponse = await this._agentProxy.RunAsync(chatMessages, thread, options, cancellationToken).ConfigureAwait(false);
         return agentResponse.ToOpenAIResponse();
     }
 }

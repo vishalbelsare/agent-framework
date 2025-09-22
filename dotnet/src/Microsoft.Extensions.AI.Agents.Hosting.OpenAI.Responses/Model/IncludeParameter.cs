@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 
-internal readonly struct IncludeParameter : IEquatable<IncludeParameter>, IParsable<IncludeParameter>
+public readonly struct IncludeParameter : IEquatable<IncludeParameter>, IParsable<IncludeParameter>
 {
     private readonly string _value;
     private const string FileSearchCallResultsValue = "file_search_call.results";

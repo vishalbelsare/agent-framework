@@ -2,6 +2,6 @@
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
-internal class OpenAIResponsesRunOptions : AgentRunOptions
+internal sealed class OpenAIResponsesRunOptions : AgentRunOptions
 {
 }

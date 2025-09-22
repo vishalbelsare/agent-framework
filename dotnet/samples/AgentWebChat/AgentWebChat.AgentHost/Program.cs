@@ -9,6 +9,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents;
 using Microsoft.Extensions.AI.Agents.Hosting;
 using Microsoft.Extensions.AI.Agents.Hosting.A2A.AspNetCore;
+using Microsoft.Extensions.AI.Agents.Hosting.Responses;
 using Microsoft.Extensions.AI.Agents.Runtime.Storage.CosmosDB;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -101,6 +102,9 @@ app.AttachA2A(agentName: "knights-and-knaves", path: "/a2a/knights-and-knaves", 
     // Url can be not set, and SDK will help assign it.
     // Url = "http://localhost:5390/a2a/knights-and-knaves"
 });
+
+app.MapOpenAIResponses("pirate");
+// app.MapOpenAIResponses("knights-and-knaves");
 
 // Map the agents HTTP endpoints
 app.MapAgentDiscovery("/agents");

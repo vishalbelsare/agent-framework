@@ -17,7 +17,8 @@ builder.Services.AddOutputCache();
 
 // This URL uses "https+http://" to indicate HTTPS is preferred over HTTP.
 // Learn more about service discovery scheme resolution at https://aka.ms/dotnet/sdschemes.
-Uri baseAddress = new("https+http://agenthost");
+string baseAddressStr = "https+http://agenthost";
+Uri baseAddress = new(baseAddressStr);
 
 // for some reason does not resolve with `apiservice` url
 Uri a2aAddress = new("http://localhost:5390/a2a");
@@ -25,6 +26,8 @@ Uri a2aAddress = new("http://localhost:5390/a2a");
 builder.Services.AddHttpClient<AgentDiscoveryClient>(client => client.BaseAddress = baseAddress);
 builder.Services.AddHttpClient<IActorClient, HttpActorClient>(client => client.BaseAddress = baseAddress);
 builder.Services.AddSingleton(sp => new A2AActorClient(sp.GetRequiredService<ILogger<A2AActorClient>>(), a2aAddress));
+
+builder.Services.AddSingleton(sp => new OpenAIResponsesActorClient(baseAddressStr));
 
 var app = builder.Build();
 
