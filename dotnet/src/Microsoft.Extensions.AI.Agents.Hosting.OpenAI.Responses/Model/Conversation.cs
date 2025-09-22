@@ -13,6 +13,8 @@ internal readonly struct Conversation
     public Conversation(string id) => (this._id, this._object) = (id, null);
     public Conversation(ConversationObject obj) => (this._id, this._object) = (null, obj);
 
+    public string? GetConversationId() => this._id ?? this._object?.Id;
+
     public bool IsId => this._id != null;
     public bool IsObject => this._object != null;
 

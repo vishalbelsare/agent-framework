@@ -2,12 +2,15 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
+using Microsoft.Extensions.AI.Agents.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses;
 
@@ -41,31 +44,38 @@ public static class EndpointRouteBuilderExtensions
 
     private static void MapGetResponse(IEndpointRouteBuilder routeGroup, AIAgent agent)
     {
-        var responsesService = routeGroup.ServiceProvider.GetRequiredService<ResponsesService>();
+        var loggerFactory = routeGroup.ServiceProvider.GetService<ILoggerFactory>();
+        var actorClient = routeGroup.ServiceProvider.GetRequiredService<IActorClient>();
 
-        routeGroup.MapPost("/", ([FromBody] CreateResponse createResponse) => responsesService.CreateModelResponseAsync(createResponse))
+        var agentName = agent.Name ?? throw new ArgumentException("The specified agent must have a valid name to map OpenAI Responses endpoints.", nameof(agent));
+        var agentProxy = new AgentProxy(agent.Name, actorClient);
+        var agentResponsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
+
+        routeGroup.MapPost("/", ([FromBody] CreateResponse createResponse, CancellationToken cancellationToken) => agentResponsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken))
             .WithName("CreateModelResponse");
 
         routeGroup.MapGet("/{responseId}", (string responseId,
+            CancellationToken cancellationToken,
             [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
             [FromQuery(Name = "starting_after")] string? startingAfter,
             [FromQuery(Name = "stream")] bool stream = false) =>
-                responsesService.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream)
+                agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken)
             )
             .WithName("GetModelResponse");
 
-        routeGroup.MapDelete("/{responseId}", (string responseId) => responsesService.DeleteModelResponseAsync(responseId))
+        routeGroup.MapDelete("/{responseId}", (string responseId, CancellationToken cancellationToken) => agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken))
             .WithName("DeleteResponse");
 
-        routeGroup.MapPost("/{responseId}/cancel", (string responseId) => responsesService.CancelResponseAsync(responseId))
+        routeGroup.MapPost("/{responseId}/cancel", (string responseId, CancellationToken cancellationToken) => agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken))
             .WithName("CancelResponse");
 
         routeGroup.MapGet("/{responseId}/input-items", (string responseId,
+            CancellationToken cancellationToken,
             [FromQuery(Name = "after")] string? after,
             [FromQuery(Name = "include")] IncludeParameter[]? include,
             [FromQuery(Name = "limit")] int? limit = 20,
             [FromQuery(Name = "order")] string? order = "desc") =>
-                responsesService.ListInputItemsAsync(responseId, after, include, limit, order)
+                agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
             )
             .WithName("ListInputItems");
     }

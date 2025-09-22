@@ -5,7 +5,7 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 /// <summary>
 /// OpenAI Response object
 /// </summary>
-internal class Response
+internal class OpenAIResponse
 {
     public required string Id { get; set; }
 }
