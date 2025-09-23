@@ -9,7 +9,7 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 public class CreateResponse
 {
     [JsonPropertyName("conversation")]
-    public Conversation Conversation { get; set; }
+    public Conversation? Conversation { get; set; }
 
     [JsonPropertyName("input")]
     public IList<ResponseInputItem>? Input { get; set; }

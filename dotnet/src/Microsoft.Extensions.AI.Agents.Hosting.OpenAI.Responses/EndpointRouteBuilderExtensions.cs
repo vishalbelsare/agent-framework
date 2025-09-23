@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;

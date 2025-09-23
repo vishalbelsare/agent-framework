@@ -23,7 +23,7 @@ internal static class OpenAIResponseMapper
         this AgentRunResponse agentRunResponse,
         AgentThread? thread = null)
     {
-        var conversation = thread?.ConversationId is not null ? new Conversation(thread.ConversationId) : default;
+        var conversation = thread?.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : new Conversation { Id = Guid.NewGuid().ToString() };
 
         var output = agentRunResponse.Messages.Select(msg => new MessageOutput
         {

@@ -29,7 +29,7 @@ internal class AIAgentResponsesProcessor
 
     public Task<Model.OpenAIResponse> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
-        var conversationId = createResponse.Conversation.ConversationId;
+        var conversationId = createResponse.Conversation?.ConversationId;
         var agentThread = conversationId is not null ? this._agentProxy.GetThread(conversationId) : this._agentProxy.GetNewThread();
 
         var options = new OpenAIResponsesRunOptions();

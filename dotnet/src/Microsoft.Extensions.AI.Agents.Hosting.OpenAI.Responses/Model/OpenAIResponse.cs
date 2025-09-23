@@ -17,7 +17,7 @@ public class OpenAIResponse
     public required bool Background { get; set; }
 
     [JsonPropertyName("conversation")]
-    public Conversation Conversation { get; set; }
+    public Conversation? Conversation { get; set; }
 
     [JsonPropertyName("created_at")]
     public long CreatedAt { get; set; }
