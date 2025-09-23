@@ -54,7 +54,7 @@ internal class AIAgentResponsesProcessor
         throw new NotImplementedException();
     }
 
-    public Task<IList<ResponseItem>> ListInputItemsAsync(string responseId, string? after, IList<IncludeParameter>? include, int? limit, string? order, CancellationToken cancellationToken)
+    public Task<IList<ResponseInputItem>> ListInputItemsAsync(string responseId, string? after, IList<IncludeParameter>? include, int? limit, string? order, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
@@ -77,7 +77,7 @@ internal class AIAgentResponsesProcessor
         var chatMessages = createResponse.Input?.ToChatMessages() ?? [];
 
         var agentResponse = await this._agentProxy.RunAsync(chatMessages, thread, options, cancellationToken).ConfigureAwait(false);
-        return agentResponse.ToOpenAIResponse();
+        return agentResponse.ToOpenAIResponse(thread);
     }
 }
 
