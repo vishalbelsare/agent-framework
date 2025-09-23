@@ -10,7 +10,7 @@ from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from textwrap import shorten
 from types import UnionType
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, Union, cast, get_args, get_origin, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Never, TypeVar, Union, cast, get_args, get_origin, overload
 
 from pydantic import Field
 
@@ -722,7 +722,7 @@ class RequestInfoExecutor(Executor):
         self._sub_workflow_contexts: dict[str, dict[str, str]] = {}
 
     @handler
-    async def run(self, message: RequestInfoMessage, ctx: WorkflowContext[None]) -> None:
+    async def run(self, message: RequestInfoMessage, ctx: WorkflowContext[Never]) -> None:
         """Run the RequestInfoExecutor with the given message."""
         source_executor_id = ctx.get_source_executor_id()
 
@@ -740,7 +740,7 @@ class RequestInfoExecutor(Executor):
     async def handle_sub_workflow_request(
         self,
         message: SubWorkflowRequestInfo,
-        ctx: WorkflowContext[None],
+        ctx: WorkflowContext[Never],
     ) -> None:
         """Handle forwarded sub-workflow request.
 

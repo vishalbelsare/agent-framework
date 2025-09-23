@@ -104,6 +104,18 @@ class TestFunctionExecutor:
         spec = no_output._instance_handler_specs[0]
         assert spec["output_types"] == []
 
+    def test_never_output_type(self):
+        """Test WorkflowContext[Never] produces empty output types."""
+        from typing import Never
+
+        @executor
+        async def no_output(data: Any, ctx: WorkflowContext[Never]) -> None:
+            # This executor doesn't send any messages
+            pass
+
+        spec = no_output._instance_handler_specs[0]
+        assert spec["output_types"] == []
+
     def test_any_output_type(self):
         """Test WorkflowContext[Any] produces empty output types."""
 

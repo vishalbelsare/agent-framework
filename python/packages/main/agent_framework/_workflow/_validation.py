@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from enum import Enum
 from types import UnionType
-from typing import Any, Union, get_args, get_origin
+from typing import Any, Never, Union, get_args, get_origin
 
 from ._edge import Edge, EdgeGroup, FanInEdgeGroup
 from ._executor import Executor
@@ -117,7 +117,7 @@ class HandlerOutputAnnotationError(WorkflowValidationError):
                 "Invalid WorkflowContext output annotation in handler "
                 f"'{handler_name}' of executor '{executor_id}': {reason}. "
                 "Handlers must annotate their third parameter as WorkflowContext[T]. "
-                "Use WorkflowContext[None] if the handler emits no messages."
+                "Use WorkflowContext[Never] if the handler emits no messages."
             ),
             validation_type=ValidationTypeEnum.HANDLER_OUTPUT_ANNOTATION,
         )
@@ -226,7 +226,7 @@ class WorkflowGraphValidator:
 
         Requirements:
         - WorkflowContext annotation must be present
-        - T_Out must be provided; if no outputs, it must be None
+        - T_Out must be provided; if no outputs, it must be Never
                 - T_Out elements must be valid types (class) or typing generics (e.g., list[str]);
                     values like int() or 123 are invalid
         """
@@ -279,7 +279,7 @@ class WorkflowGraphValidator:
                         raise HandlerOutputAnnotationError(
                             executor_id,
                             handler_name,
-                            "T_Out is missing; use WorkflowContext[None] or specify concrete types",
+                            "T_Out is missing; use WorkflowContext[Never] or specify concrete types",
                         )
                 else:
                     # The annotation is parameterized, but must be for WorkflowContext
@@ -294,7 +294,7 @@ class WorkflowGraphValidator:
                     raise HandlerOutputAnnotationError(
                         executor_id,
                         handler_name,
-                        "T_Out is missing; use WorkflowContext[None] or specify concrete types",
+                        "T_Out is missing; use WorkflowContext[Never] or specify concrete types",
                     )
 
                 t_out = type_args[0]
@@ -304,7 +304,11 @@ class WorkflowGraphValidator:
                 if t_out is Any:
                     continue
 
-                # Allow None (no outputs) explicitly declared
+                # Allow Never (no outputs) explicitly declared
+                if t_out is Never:
+                    continue
+
+                # Allow None (no outputs) for backward compatibility
                 if t_out is type(None):
                     continue
 
@@ -337,7 +341,7 @@ class WorkflowGraphValidator:
                             raise HandlerOutputAnnotationError(
                                 executor_id,
                                 handler_name,
-                                "T_Out is missing; use WorkflowContext[None] or specify concrete types",
+                                "T_Out is missing; use WorkflowContext[Never] or specify concrete types",
                             )
                     else:
                         if ctx_origin is not WorkflowContext:
@@ -351,7 +355,7 @@ class WorkflowGraphValidator:
                         raise HandlerOutputAnnotationError(
                             executor_id,
                             handler_name,
-                            "T_Out is missing; use WorkflowContext[None] or specify concrete types",
+                            "T_Out is missing; use WorkflowContext[Never] or specify concrete types",
                         )
 
                     t_out = type_args[0]

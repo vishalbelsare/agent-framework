@@ -1,7 +1,8 @@
 # Copyright (c) Microsoft. All rights reserved.
 
 import logging
-from typing import Any, Generic, TypeVar, cast, get_args
+from typing import Any, Generic, Never, cast, get_args
+from typing_extensions import TypeVar
 
 from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind
@@ -19,7 +20,7 @@ from ._events import (
 from ._runner_context import Message, RunnerContext
 from ._shared_state import SharedState
 
-T_Out = TypeVar("T_Out")
+T_Out = TypeVar("T_Out", default=Never)
 
 
 logger = logging.getLogger(__name__)

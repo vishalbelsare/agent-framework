@@ -4,7 +4,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Never
 
 if TYPE_CHECKING:
     from ._executor import RequestInfoExecutor
@@ -226,7 +226,7 @@ class Runner:
                         request_info_executor = self._find_request_info_executor()
 
                         if request_info_executor:
-                            request_info_workflow_ctx: WorkflowContext[None] = WorkflowContext(
+                            request_info_workflow_ctx: WorkflowContext[Never] = WorkflowContext(
                                 request_info_executor.id,
                                 [message.source_id],
                                 self._shared_state,

@@ -603,8 +603,8 @@ def test_handler_ctx_unsubscripted_workflow_context_raises() -> None:
         WorkflowBuilder().add_edge(start, bad).set_start_executor(start).build()
 
     assert exc.value.validation_type == ValidationTypeEnum.HANDLER_OUTPUT_ANNOTATION
-    # Message should mention missing T or WorkflowContext[None]
-    assert "WorkflowContext[None]" in str(exc.value) or "missing" in str(exc.value).lower()
+    # Message should mention missing T or WorkflowContext[Never]
+    assert "WorkflowContext[Never]" in str(exc.value) or "missing" in str(exc.value).lower()
 
 
 def test_handler_ctx_invalid_t_out_entries_raises() -> None:
@@ -636,6 +636,33 @@ def test_handler_ctx_none_is_allowed() -> None:
     # Should build successfully
     wf = WorkflowBuilder().add_edge(start, none_exec).set_start_executor(start).build()
     assert wf is not None
+
+
+def test_handler_ctx_never_is_allowed() -> None:
+    from typing import Never
+    
+    class NeverExecutor(Executor):
+        @handler
+        async def handle(self, message: str, ctx: WorkflowContext[Never]) -> None:
+            # does not emit
+            return None
+
+    start = StringExecutor(id="s")
+    never_exec = NeverExecutor(id="n")
+
+    # Should build successfully
+    wf = WorkflowBuilder().add_edge(start, never_exec).set_start_executor(start).build()
+    assert wf is not None
+
+
+def test_workflow_context_default_type_parameter_is_never() -> None:
+    """Test that WorkflowContext now defaults to Never instead of None."""
+    from agent_framework._workflow._workflow_context import T_Out
+    from typing import Never
+    
+    # Verify that the TypeVar has Never as default
+    assert hasattr(T_Out, '__default__')
+    assert T_Out.__default__ is Never
 
 
 def test_handler_ctx_any_is_allowed_but_skips_type_checks(caplog: Any) -> None:

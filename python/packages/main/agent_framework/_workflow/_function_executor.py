@@ -14,7 +14,7 @@ import asyncio
 import inspect
 from collections.abc import Awaitable, Callable
 from types import UnionType
-from typing import Any, Union, get_args, get_origin, overload
+from typing import Any, Never, Union, get_args, get_origin, overload
 
 from ._executor import Executor
 from ._workflow_context import WorkflowContext
@@ -37,7 +37,7 @@ def _infer_output_types_from_ctx_annotation(ctx_annotation: Any) -> list[type]:
     - WorkflowContext[str | int] -> [str, int]
     - WorkflowContext[Union[str, int]] -> [str, int]
     - WorkflowContext[Any] -> [] (unknown)
-    - WorkflowContext[None] -> []
+    - WorkflowContext[Never] -> []
     """
     # If no annotation or not parameterized, return empty list
     try:
@@ -66,10 +66,10 @@ def _infer_output_types_from_ctx_annotation(ctx_annotation: Any) -> list[type]:
 
     if t_origin in (Union, UnionType):
         # Return all union args as-is (may include generic aliases like list[str])
-        return [arg for arg in get_args(t) if arg is not Any and arg is not type(None)]
+        return [arg for arg in get_args(t) if arg is not Any and arg is not type(None) and arg is not Never]
 
     # Single concrete or generic alias type (e.g., str, int, list[str])
-    if t is Any or t is type(None):
+    if t is Any or t is type(None) or t is Never:
         return []
     return [t]
 
