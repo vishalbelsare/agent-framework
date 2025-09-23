@@ -4,4 +4,5 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
 internal sealed class OpenAIResponsesRunOptions : AgentRunOptions
 {
+    public bool Background { get; init; }
 }

@@ -15,7 +15,7 @@ internal sealed class OpenAIResponsesActorClient : IActorClient
 
     public OpenAIResponsesActorClient(string baseUri)
     {
-        this._baseUri = baseUri;
+        this._baseUri = baseUri.TrimEnd('/');
     }
 
     public ValueTask<ActorResponseHandle> GetResponseAsync(ActorId actorId, string messageId, CancellationToken cancellationToken)
@@ -23,11 +23,20 @@ internal sealed class OpenAIResponsesActorClient : IActorClient
         throw new NotImplementedException();
     }
 
-    public async ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)
+    public ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)
     {
+        // non-streaming approach. Ideally for chat we should be doing streaming here.
+        return this.SendRequestNonStreaming(request, cancellationToken);
+    }
+
+    private async ValueTask<ActorResponseHandle> SendRequestNonStreaming(ActorRequest request, CancellationToken cancellationToken)
+    {
+        // this is a "root" of the OpenAI Responses surface for the agent
+        var relativeUri = "/" + request.ActorId.Type + "/v1/";
+
         OpenAIClientOptions options = new()
         {
-            Endpoint = new Uri(this._baseUri)
+            Endpoint = new Uri(this._baseUri + relativeUri)
         };
 
         OpenAIResponseClient client = new(
@@ -37,16 +46,14 @@ internal sealed class OpenAIResponsesActorClient : IActorClient
 
         var data = request.Params.GetRawText();
         var content = BinaryContent.Create(BinaryData.FromString(data));
-        var res = await client.CreateResponseAsync(content);
+        var response = await client.CreateResponseAsync(content);
 
-        Console.Write(res);
-
-        return new OpenAIActorResponseHandle();
+        return new OpenAIActorResponseHandle(response);
     }
 }
 #pragma warning restore OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-internal sealed class OpenAIActorResponseHandle : ActorResponseHandle
+internal sealed class OpenAIActorResponseHandle(ClientResult result) : ActorResponseHandle
 {
     public override ValueTask CancelAsync(CancellationToken cancellationToken)
     {
@@ -55,7 +62,7 @@ internal sealed class OpenAIActorResponseHandle : ActorResponseHandle
 
     public override ValueTask<ActorResponse> GetResponseAsync(CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        result.GetRawResponse();
     }
 
     public override bool TryGetResponse([NotNullWhen(true)] out ActorResponse? response)

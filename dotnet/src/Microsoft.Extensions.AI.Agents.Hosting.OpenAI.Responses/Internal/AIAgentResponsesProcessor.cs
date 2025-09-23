@@ -2,17 +2,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using OpenAI.Responses;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
-
-#pragma warning disable OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 internal class AIAgentResponsesProcessor
 {
@@ -27,19 +27,25 @@ internal class AIAgentResponsesProcessor
         this._agentProxy = agentProxy ?? throw new ArgumentNullException(nameof(agentProxy));
     }
 
-    public Task<Model.OpenAIResponse> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
+    public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
         var conversationId = createResponse.Conversation?.ConversationId;
         var agentThread = conversationId is not null ? this._agentProxy.GetThread(conversationId) : this._agentProxy.GetNewThread();
 
         var options = new OpenAIResponsesRunOptions();
+        var chatMessages = createResponse.Input.ToChatMessages();
 
-        return createResponse.Stream
-            ? this.HandleStreamingResponseAsync(createResponse, agentThread, options, cancellationToken)
-            : this.HandleNonStreamingResponseAsync(createResponse, agentThread, options, cancellationToken);
+        if (createResponse.Stream)
+        {
+            return new OpenAIStreamingResponsesResult(this._agentProxy, chatMessages, agentThread, options);
+        }
+
+        var agentResponse = await this._agentProxy.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
+        var openAIResponse = agentResponse.ToOpenAIResponse(agentThread, options);
+        return Results.Ok(openAIResponse);
     }
 
-    public Task<Model.OpenAIResponse> GetModelResponseAsync(string responseId, string? includeObfuscation, string? startingAfter, bool stream, CancellationToken cancellationToken)
+    public async Task<IResult> GetModelResponseAsync(string responseId, string? includeObfuscation, string? startingAfter, bool stream, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
@@ -49,36 +55,48 @@ internal class AIAgentResponsesProcessor
         throw new NotImplementedException();
     }
 
-    public Task<Model.OpenAIResponse> CancelResponseAsync(string responseId, CancellationToken cancellationToken)
+    public Task<Response> CancelResponseAsync(string responseId, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
 
-    public Task<IList<ResponseInputItem>> ListInputItemsAsync(string responseId, string? after, IList<IncludeParameter>? include, int? limit, string? order, CancellationToken cancellationToken)
+    public Task<IList<ResponseInputMessage>> ListInputItemsAsync(string responseId, string? after, IList<IncludeParameter>? include, int? limit, string? order, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
 
-    private async Task<Model.OpenAIResponse> HandleStreamingResponseAsync(
-        CreateResponse createResponse,
+    private class OpenAIStreamingResponsesResult(
+        AgentProxy agentProxy,
+        IEnumerable<ChatMessage> chatMessages,
         AgentThread thread,
-        AgentRunOptions options,
-        CancellationToken cancellationToken)
+        OpenAIResponsesRunOptions options) : IResult
     {
-        throw new NotImplementedException();
-    }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            var cancellationToken = httpContext.RequestAborted;
+            var response = httpContext.Response;
+            response.Headers.ContentType = "text/event-stream";
+            response.Headers.CacheControl = "no-cache,no-store";
+            response.Headers.Connection = "keep-alive";
 
-    private async Task<Model.OpenAIResponse> HandleNonStreamingResponseAsync(
-        CreateResponse createResponse,
-        AgentThread thread,
-        AgentRunOptions options,
-        CancellationToken cancellationToken)
-    {
-        var chatMessages = createResponse.Input?.ToChatMessages() ?? [];
+            // Make sure we disable all response buffering for SSE.
+            response.Headers.ContentEncoding = "identity";
+            httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
+            await response.Body.FlushAsync(cancellationToken);
 
-        var agentResponse = await this._agentProxy.RunAsync(chatMessages, thread, options, cancellationToken).ConfigureAwait(false);
-        return agentResponse.ToOpenAIResponse(thread);
+            await foreach (var update in agentProxy.RunStreamingAsync(chatMessages, thread, options, cancellationToken))
+            {
+                // it should map into responses streaming here.
+                // https://platform.openai.com/docs/api-reference/responses-streaming/response
+
+                var updateTypeInfo = AgentHostingJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
+                var eventData = JsonSerializer.Serialize(update, updateTypeInfo);
+                var eventText = $"data: {eventData}\n\n";
+
+                await response.WriteAsync(eventText, cancellationToken);
+                await response.Body.FlushAsync(cancellationToken);
+            }
+        }
     }
 }
-
-#pragma warning restore OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.

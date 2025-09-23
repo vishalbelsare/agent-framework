@@ -8,7 +8,7 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 /// <summary>
 /// OpenAI Response object
 /// </summary>
-public class OpenAIResponse
+public class Response
 {
     [JsonPropertyName("id")]
     public required string Id { get; set; }

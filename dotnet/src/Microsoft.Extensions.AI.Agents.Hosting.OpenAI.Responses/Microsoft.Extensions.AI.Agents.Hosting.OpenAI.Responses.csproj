@@ -3,14 +3,11 @@
   <PropertyGroup>
     <TargetFrameworks>$(ProjectsCoreTargetFrameworks)</TargetFrameworks>
     <TargetFrameworks Condition="'$(Configuration)' == 'Debug'">$(ProjectsCoreTargetFrameworks)</TargetFrameworks>
-    <NoWarn>$(NoWarn);IDE1006;IDE0130;NU1504;CA1852;CA1812;CS1591</NoWarn> <!-- So many alerts dissallowing to run code... Need to remove some of warnings. -->
+    <NoWarn>$(NoWarn);IDE1006;IDE0130;NU1504;CA1852;CA1812;CS1591;IL3050;IL2026</NoWarn> <!-- So many alerts dissallowing to run code... Need to remove some of warnings. -->
+    <!-- So many alerts dissallowing to run code... Need to remove some of warnings. -->
     <RootNamespace>Microsoft.Extensions.AI.Agents.Hosting.Responses</RootNamespace>
     <VersionSuffix>alpha</VersionSuffix>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="OpenAI" />
-  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

@@ -57,6 +57,7 @@
             <select id="protocol-select" class="protocol-select" @bind="selectedProtocol" disabled="@(isStreaming)">
                 <option value="AgenticFramework">Agentic Framework</option>
                 <option value="A2A">A2A (Agent-to-Agent)</option>
+				<option value="OpenAIResponses">OpenAI Responses</option>
             </select>
             <div class="protocol-info">
                 @switch (selectedProtocol)

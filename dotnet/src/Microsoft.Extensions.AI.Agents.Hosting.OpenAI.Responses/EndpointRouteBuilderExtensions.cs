@@ -52,11 +52,9 @@ public static class EndpointRouteBuilderExtensions
         var agentProxy = new AgentProxy(agent.Name, actorClient);
         var agentResponsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
 
-        routeGroup.MapPost("/", async (CreateResponse createResponse, CancellationToken cancellationToken) =>
-        {
-            var response = await agentResponsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
-        }).WithName(agentName + "/CreateResponse");
+        routeGroup.MapPost("/", (CreateResponse createResponse, CancellationToken cancellationToken)
+            => agentResponsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken)
+        ).WithName(agentName + "/CreateResponse");
 
         routeGroup.MapGet("/{responseId}", async (string responseId,
             CancellationToken cancellationToken,

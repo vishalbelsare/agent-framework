@@ -2,8 +2,6 @@
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 
-public class ResponseInputItem
+public abstract class ResponseUpdate
 {
-    public string? Role { get; set; }
-    public string? Content { get; set; }
 }
