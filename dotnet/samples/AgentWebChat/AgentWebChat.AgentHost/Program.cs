@@ -104,7 +104,7 @@ app.AttachA2A(agentName: "knights-and-knaves", path: "/a2a/knights-and-knaves", 
 });
 
 app.MapOpenAIResponses("pirate");
-// app.MapOpenAIResponses("knights-and-knaves");
+app.MapOpenAIResponses("knights-and-knaves");
 
 // Map the agents HTTP endpoints
 app.MapAgentDiscovery("/agents");
