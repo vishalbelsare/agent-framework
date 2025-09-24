@@ -8,6 +8,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Microsoft.Extensions.AI.Agents.Hosting.A2A\Microsoft.Extensions.AI.Agents.Hosting.A2A.csproj" />
+    <ProjectReference Include="..\..\..\src\Microsoft.Extensions.AI.Agents.Hosting.OpenAI.Responses\Microsoft.Extensions.AI.Agents.Hosting.OpenAI.Responses.csproj" />
     <ProjectReference Include="..\..\..\src\Microsoft.Extensions.AI.Agents.Hosting\Microsoft.Extensions.AI.Agents.Hosting.csproj" />
     <ProjectReference Include="..\AgentWebChat.ServiceDefaults\AgentWebChat.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\..\src\Microsoft.Extensions.AI.Agents.Abstractions\Microsoft.Extensions.AI.Agents.Abstractions.csproj" />
