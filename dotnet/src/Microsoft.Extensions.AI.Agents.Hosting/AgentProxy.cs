@@ -111,6 +111,22 @@ public sealed class AgentProxy : AIAgent
         }
     }
 
+    /// <summary>
+    /// Gets an already-running request by its response identifier.
+    /// </summary>
+    /// <param name="messageId">The unique identifier of the message.</param>
+    /// <param name="threadId">The thread id.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task representing the actor response handle.</returns>
+    public async ValueTask<ActorResponseHandle> GetResponseAsync(string messageId, string threadId, CancellationToken cancellationToken = default)
+    {
+        Throw.IfNullOrEmpty(messageId, nameof(messageId));
+        Throw.IfNullOrEmpty(threadId, nameof(threadId));
+
+        var actorId = new ActorId(this.Name, threadId);
+        return await this._client.GetResponseAsync(actorId, messageId, cancellationToken).ConfigureAwait(false);
+    }
+
     private static string GetAgentThreadId(AgentThread? thread)
     {
         if (thread is null)

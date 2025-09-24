@@ -70,7 +70,13 @@ public readonly struct ActorId : IEquatable<ActorId>
         return result;
     }
 
-    private static bool TryParse(string input, out ActorId actorId)
+    /// <summary>
+    /// Tries to convert a string of the format "type/key" into an <see cref="ActorId"/>.
+    /// </summary>
+    /// <param name="input">The string representation of agentType and key.</param>
+    /// <param name="actorId">Parsed instance of <see cref="ActorId"/>.</param>
+    /// <returns>True if parsing was successful, otherwise false.</returns>
+    public static bool TryParse(string input, out ActorId actorId)
     {
         if (!string.IsNullOrEmpty(input))
         {

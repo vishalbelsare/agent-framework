@@ -11,15 +11,21 @@ using Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.AI.Agents.Runtime;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
+/// <summary>
+/// OpenAI Responses processor associated with a specific <see cref="AIAgent"/>.
+/// </summary>
 internal class AIAgentResponsesProcessor
 {
 #pragma warning disable IDE0052 // Remove unread private members
     private readonly ILogger _logger;
 #pragma warning restore IDE0052 // Remove unread private members
     private readonly AgentProxy _agentProxy;
+
+    private ActorType AgentType => new(this._agentProxy.Name);
 
     public AIAgentResponsesProcessor(AgentProxy agentProxy, ILoggerFactory? loggerFactory = null)
     {
@@ -41,13 +47,22 @@ internal class AIAgentResponsesProcessor
         }
 
         var agentResponse = await this._agentProxy.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
-        var openAIResponse = agentResponse.ToOpenAIResponse(agentThread, options);
+        var openAIResponse = agentResponse.ToOpenAIResponse(this.AgentType, agentThread, options);
         return Results.Ok(openAIResponse);
     }
 
     public async Task<IResult> GetModelResponseAsync(string responseId, string? includeObfuscation, string? startingAfter, bool stream, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        // For now, we'll need to extract the conversation ID from the responseId or use a default approach
+        // This is a limitation that may need to be addressed in the API design
+        // For this implementation, we'll assume the responseId contains the conversation information
+        // or we need to store the mapping between responseId and conversationId
+        if (!ActorId.TryParse(responseId, out var actorId))
+        {
+            return Results.BadRequest($"The response ID '{responseId}' is not a valid ActorId.");
+        }
+
+        var responseHandle = await this._agentProxy.GetResponseAsync(messageId, conversationId, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<bool> DeleteModelResponseAsync(string responseId, CancellationToken cancellationToken)

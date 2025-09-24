@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 using Response = Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Response;
+using Microsoft.Extensions.AI.Agents.Runtime;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
 
@@ -35,10 +36,11 @@ internal static class OpenAIResponseMapper
 
     public static Response ToOpenAIResponse(
         this AgentRunResponse agentRunResponse,
+        ActorType agentType,
         AgentThread thread,
         OpenAIResponsesRunOptions options)
     {
-        var conversation = thread?.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : new Conversation { Id = Guid.NewGuid().ToString() };
+        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : new Conversation { Id = Guid.NewGuid().ToString() };
 
         var output = agentRunResponse.Messages.Select(msg => new MessageOutput
         {
@@ -50,9 +52,12 @@ internal static class OpenAIResponseMapper
             }).ToList(),
         }).ToList<ResponseOutputItem>();
 
+        // openAI can later try to fetch the response via ID only. That is why we can provide the "agentType/conversationId" as response.
+        var responseId = new ActorId(agentType, conversation.ConversationId!);
+
         return new()
         {
-            Id = agentRunResponse.ResponseId ?? Guid.NewGuid().ToString(),
+            Id = responseId.ToString(),
             Background = options.Background,
             Conversation = conversation,
             CreatedAt = agentRunResponse.CreatedAt is not null ? agentRunResponse.CreatedAt.Value.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
