@@ -40,7 +40,7 @@ internal static class OpenAIResponseMapper
         AgentThread thread,
         OpenAIResponsesRunOptions options)
     {
-        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : new Conversation { Id = Guid.NewGuid().ToString() };
+        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
 
         var output = agentRunResponse.Messages.Select(msg => new MessageOutput
         {
@@ -53,11 +53,12 @@ internal static class OpenAIResponseMapper
         }).ToList<ResponseOutputItem>();
 
         // openAI can later try to fetch the response via ID only. That is why we can provide the "agentType/conversationId" as response.
-        var responseId = new ActorId(agentType, conversation.ConversationId!);
+        // var responseId = new ActorId(agentType, conversation.ConversationId!);
+        var responseId = agentRunResponse.ResponseId ?? Guid.NewGuid().ToString();
 
         return new()
         {
-            Id = responseId.ToString(),
+            Id = responseId,
             Background = options.Background,
             Conversation = conversation,
             CreatedAt = agentRunResponse.CreatedAt is not null ? agentRunResponse.CreatedAt.Value.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),

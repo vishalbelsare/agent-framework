@@ -57,12 +57,7 @@ internal class AIAgentResponsesProcessor
         // This is a limitation that may need to be addressed in the API design
         // For this implementation, we'll assume the responseId contains the conversation information
         // or we need to store the mapping between responseId and conversationId
-        if (!ActorId.TryParse(responseId, out var actorId))
-        {
-            return Results.BadRequest($"The response ID '{responseId}' is not a valid ActorId.");
-        }
-
-        var responseHandle = await this._agentProxy.GetResponseAsync(messageId, conversationId, cancellationToken).ConfigureAwait(false);
+        throw new NotImplementedException();
     }
 
     public Task<bool> DeleteModelResponseAsync(string responseId, CancellationToken cancellationToken)
@@ -83,7 +78,7 @@ internal class AIAgentResponsesProcessor
     private class OpenAIStreamingResponsesResult(
         AgentProxy agentProxy,
         IEnumerable<ChatMessage> chatMessages,
-        AgentThread thread,
+        AgentThread? thread,
         OpenAIResponsesRunOptions options) : IResult
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]

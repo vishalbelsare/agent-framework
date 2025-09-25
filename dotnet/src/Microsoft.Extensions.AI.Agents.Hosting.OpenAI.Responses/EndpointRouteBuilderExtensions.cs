@@ -50,6 +50,11 @@ public static class EndpointRouteBuilderExtensions
 
         var agentName = agent.Name ?? throw new ArgumentException("The specified agent must have a valid name to map OpenAI Responses endpoints.", nameof(agent));
         var agentProxy = new AgentProxy(agent.Name, actorClient);
+
+        var responseActorProvider = routeGroup.ServiceProvider.GetKeyedService<IResponseActorProvider>(agent.Name)
+            ?? routeGroup.ServiceProvider.GetService<IResponseActorProvider>()
+            ?? new InProcessResponseActorProvider();
+
         var agentResponsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
 
         routeGroup.MapPost("/", (CreateResponse createResponse, CancellationToken cancellationToken)
