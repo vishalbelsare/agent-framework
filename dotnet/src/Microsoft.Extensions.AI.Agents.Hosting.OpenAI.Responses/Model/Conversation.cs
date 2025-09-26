@@ -24,7 +24,7 @@ public class ConversationObject
     public required string Id { get; set; }
 
     [JsonPropertyName("created_at")]
-    public required long CreatedAt { get; set; }
+    public long CreatedAt { get; set; }
 
     [JsonPropertyName("object")]
     public string RawObject { get; set; } = "conversation";

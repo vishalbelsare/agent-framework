@@ -14,11 +14,8 @@ public class CreateResponse
     [JsonPropertyName("conversation")]
     public Conversation? Conversation { get; set; }
 
-    [JsonPropertyName("include")]
-    public IList<IncludeParameter>? Include { get; set; }
-
     [JsonPropertyName("input")]
-    public ResponseInput? Input { get; set; }
+    public ResponseInputItem? Input { get; set; }
 
     [JsonPropertyName("stream")]
     public bool Stream { get; set; }

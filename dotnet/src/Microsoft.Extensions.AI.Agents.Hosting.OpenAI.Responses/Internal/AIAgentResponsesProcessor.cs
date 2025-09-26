@@ -35,8 +35,8 @@ internal class AIAgentResponsesProcessor
 
     public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
-        var conversationId = createResponse.Conversation?.ConversationId;
-        var agentThread = conversationId is not null ? this._agentProxy.GetThread(conversationId) : this._agentProxy.GetNewThread();
+        string conversationId = createResponse.Conversation?.ConversationId ?? $"conv_{Guid.NewGuid():N}";
+        var agentThread = this._agentProxy.GetThread(conversationId);
 
         var options = new OpenAIResponsesRunOptions();
         var chatMessages = createResponse.Input.ToChatMessages();
@@ -49,30 +49,6 @@ internal class AIAgentResponsesProcessor
         var agentResponse = await this._agentProxy.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
         var openAIResponse = agentResponse.ToOpenAIResponse(this.AgentType, agentThread, options);
         return Results.Ok(openAIResponse);
-    }
-
-    public async Task<IResult> GetModelResponseAsync(string responseId, string? includeObfuscation, string? startingAfter, bool stream, CancellationToken cancellationToken)
-    {
-        // For now, we'll need to extract the conversation ID from the responseId or use a default approach
-        // This is a limitation that may need to be addressed in the API design
-        // For this implementation, we'll assume the responseId contains the conversation information
-        // or we need to store the mapping between responseId and conversationId
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> DeleteModelResponseAsync(string responseId, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Response> CancelResponseAsync(string responseId, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IList<ResponseInputMessage>> ListInputItemsAsync(string responseId, string? after, IList<IncludeParameter>? include, int? limit, string? order, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
     }
 
     private class OpenAIStreamingResponsesResult(

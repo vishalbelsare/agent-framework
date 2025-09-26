@@ -10,8 +10,8 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 /// <summary>
 /// Represents input that can be either a simple text string or a list of input items.
 /// </summary>
-[JsonConverter(typeof(ResponseInputConverter))]
-public class ResponseInput
+[JsonConverter(typeof(ResponseInputItemConverter))]
+public class ResponseInputItem
 {
     /// <summary>
     /// Gets or sets the text input when the input is a simple string.
@@ -36,12 +36,12 @@ public class ResponseInput
     /// <summary>
     /// Creates a ResponseInput from a text string.
     /// </summary>
-    public static implicit operator ResponseInput(string text) => new() { Text = text };
+    public static implicit operator ResponseInputItem(string text) => new() { Text = text };
 
     /// <summary>
     /// Creates a ResponseInput from a list of items.
     /// </summary>
-    public static implicit operator ResponseInput(List<ResponseInputMessage> items) => new() { Items = items };
+    public static implicit operator ResponseInputItem(List<ResponseInputMessage> items) => new() { Items = items };
 }
 
 /// <summary>
@@ -62,9 +62,9 @@ public class ResponseInputMessage
 /// <summary>
 /// JSON converter for ResponseInput that handles both string and array formats.
 /// </summary>
-public sealed class ResponseInputConverter : JsonConverter<ResponseInput?>
+public sealed class ResponseInputItemConverter : JsonConverter<ResponseInputItem?>
 {
-    public override ResponseInput? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ResponseInputItem? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType is JsonTokenType.Null)
         {
@@ -73,19 +73,19 @@ public sealed class ResponseInputConverter : JsonConverter<ResponseInput?>
 
         if (reader.TokenType is JsonTokenType.String)
         {
-            return new ResponseInput { Text = reader.GetString() };
+            return new ResponseInputItem { Text = reader.GetString() };
         }
 
         if (reader.TokenType is JsonTokenType.StartArray)
         {
             var items = JsonSerializer.Deserialize<List<ResponseInputMessage>>(ref reader, options);
-            return new ResponseInput { Items = items };
+            return new ResponseInputItem { Items = items };
         }
 
         throw new JsonException($"Unexpected token type {reader.TokenType} for ResponseInput");
     }
 
-    public override void Write(Utf8JsonWriter writer, ResponseInput? value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, ResponseInputItem? value, JsonSerializerOptions options)
     {
         if (value is null)
         {

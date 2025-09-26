@@ -17,7 +17,14 @@ namespace Microsoft.Extensions.AI.Agents.Hosting;
 /// </summary>
 public sealed class AgentProxy : AIAgent
 {
+#pragma warning disable IDE0032 // Use auto property
     private readonly IActorClient _client;
+#pragma warning restore IDE0032 // Use auto property
+
+    /// <summary>
+    /// tsss
+    /// </summary>
+    public IActorClient Client => this._client;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AgentProxy"/> class with the specified agent name and actor client.
@@ -124,6 +131,7 @@ public sealed class AgentProxy : AIAgent
         Throw.IfNullOrEmpty(threadId, nameof(threadId));
 
         var actorId = new ActorId(this.Name, threadId);
+
         return await this._client.GetResponseAsync(actorId, messageId, cancellationToken).ConfigureAwait(false);
     }
 

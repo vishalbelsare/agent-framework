@@ -12,7 +12,7 @@ namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
 
 internal static class OpenAIResponseMapper
 {
-    public static IEnumerable<ChatMessage> ToChatMessages(this ResponseInput? responseInput)
+    public static IEnumerable<ChatMessage> ToChatMessages(this ResponseInputItem? responseInput)
     {
         if (responseInput is null)
         {
@@ -52,9 +52,7 @@ internal static class OpenAIResponseMapper
             }).ToList(),
         }).ToList<ResponseOutputItem>();
 
-        // openAI can later try to fetch the response via ID only. That is why we can provide the "agentType/conversationId" as response.
-        // var responseId = new ActorId(agentType, conversation.ConversationId!);
-        var responseId = agentRunResponse.ResponseId ?? Guid.NewGuid().ToString();
+        var responseId = agentRunResponse.ResponseId ?? $"resp_{Guid.NewGuid():N}";
 
         return new()
         {

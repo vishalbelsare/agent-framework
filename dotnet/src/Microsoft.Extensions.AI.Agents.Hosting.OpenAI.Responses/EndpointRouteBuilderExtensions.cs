@@ -28,69 +28,115 @@ public static class EndpointRouteBuilderExtensions
     /// <param name="endpoints"></param>
     /// <param name="agentName"></param>
     /// <param name="responsesPath"></param>
+    /// <param name="conversationsPath"></param>
     public static void MapOpenAIResponses(
         this IEndpointRouteBuilder endpoints,
         string agentName,
-        [StringSyntax("Route")] string? responsesPath = null)
+        [StringSyntax("Route")] string? responsesPath = null,
+        [StringSyntax("Route")] string? conversationsPath = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentNullException.ThrowIfNull(agentName, nameof(agentName));
 
-        responsesPath ??= $"/{agentName}/v1/responses";
-        var routeGroup = endpoints.MapGroup(responsesPath);
+        var agent = endpoints.ServiceProvider.GetRequiredKeyedService<AIAgent>(agentName);
+        ArgumentNullException.ThrowIfNull(agent.Name, nameof(agent.Name));
 
-        var aiAgent = endpoints.ServiceProvider.GetRequiredKeyedService<AIAgent>(agentName);
-        MapGetResponse(routeGroup, aiAgent);
-    }
-
-    private static void MapGetResponse(IEndpointRouteBuilder routeGroup, AIAgent agent)
-    {
-        var loggerFactory = routeGroup.ServiceProvider.GetService<ILoggerFactory>();
-        var actorClient = routeGroup.ServiceProvider.GetRequiredService<IActorClient>();
-
-        var agentName = agent.Name ?? throw new ArgumentException("The specified agent must have a valid name to map OpenAI Responses endpoints.", nameof(agent));
+        var loggerFactory = endpoints.ServiceProvider.GetService<ILoggerFactory>();
+        var actorClient = endpoints.ServiceProvider.GetRequiredService<IActorClient>();
         var agentProxy = new AgentProxy(agent.Name, actorClient);
 
-        var responseActorProvider = routeGroup.ServiceProvider.GetKeyedService<IResponseActorProvider>(agent.Name)
-            ?? routeGroup.ServiceProvider.GetService<IResponseActorProvider>()
-            ?? new InProcessResponseActorProvider();
+        responsesPath ??= $"/{agentName}/v1/responses";
+        var responsesRouteGroup = endpoints.MapGroup(responsesPath);
+        MapResponses(responsesRouteGroup, agentProxy, loggerFactory);
 
-        var agentResponsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
+        conversationsPath ??= $"/{agentName}/v1/conversations";
+        var conversationsRouteGroup = endpoints.MapGroup(conversationsPath);
+        MapConversations(conversationsRouteGroup, agentProxy, loggerFactory);
+    }
+
+    private static void MapResponses(IEndpointRouteBuilder routeGroup, AgentProxy agentProxy, ILoggerFactory? loggerFactory)
+    {
+        var agentName = agentProxy.Name;
+        var responsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
 
         routeGroup.MapPost("/", (CreateResponse createResponse, CancellationToken cancellationToken)
-            => agentResponsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken)
+            => responsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken)
         ).WithName(agentName + "/CreateResponse");
 
-        routeGroup.MapGet("/{responseId}", async (string responseId,
-            CancellationToken cancellationToken,
-            [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
-            [FromQuery(Name = "starting_after")] string? startingAfter,
-            [FromQuery(Name = "stream")] bool stream = false) =>
-        {
-            var response = await agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
-        }).WithName(agentName + "/GetModelResponse");
+        // Endpoints below are related to the response management.
+        // Currently, there is no way to persistently track the actual response
+        // (we can do on conversation / message level).
+        // --
+        // will be added after actor model rework.
 
-        routeGroup.MapDelete("/{responseId}", async (string responseId, CancellationToken cancellationToken) =>
-        {
-            var deleted = await agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(new DeleteModelResponse(deleted));
-        }).WithName(agentName + "/DeleteResponse");
+        //routeGroup.MapGet("/{responseId}", (string responseId,
+        //    CancellationToken cancellationToken,
+        //    [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
+        //    [FromQuery(Name = "starting_after")] string? startingAfter,
+        //    [FromQuery(Name = "stream")] bool stream = false)
+        //    => agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken).ConfigureAwait(false)
+        //).WithName(agentName + "/GetModelResponse");
 
-        routeGroup.MapPost("/{responseId}/cancel", async (string responseId, CancellationToken cancellationToken) =>
-        {
-            var response = await agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-            return Results.Ok(response);
-        }).WithName(agentName + "/CancelResponse");
+        //routeGroup.MapDelete("/{responseId}", async (string responseId, CancellationToken cancellationToken) =>
+        //{
+        //    var deleted = await agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
+        //    return Results.Ok(new DeleteModelResponse(deleted));
+        //}).WithName(agentName + "/DeleteResponse");
 
-        routeGroup.MapGet("/{responseId}/input-items", (string responseId,
-            CancellationToken cancellationToken,
-            [FromQuery(Name = "after")] string? after,
-            [FromQuery(Name = "include")] IncludeParameter[]? include,
-            [FromQuery(Name = "limit")] int? limit = 20,
-            [FromQuery(Name = "order")] string? order = "desc") =>
-                agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
-            )
-            .WithName(agentName + "/ListInputItems");
+        //routeGroup.MapPost("/{responseId}/cancel", async (string responseId, CancellationToken cancellationToken) =>
+        //{
+        //    var response = await agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
+        //    return Results.Ok(response);
+        //}).WithName(agentName + "/CancelResponse");
+
+        //routeGroup.MapGet("/{responseId}/input-items", (string responseId,
+        //    CancellationToken cancellationToken,
+        //    [FromQuery(Name = "after")] string? after,
+        //    [FromQuery(Name = "include")] IncludeParameter[]? include,
+        //    [FromQuery(Name = "limit")] int? limit = 20,
+        //    [FromQuery(Name = "order")] string? order = "desc") =>
+        //        agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
+        //    )
+        //    .WithName(agentName + "/ListInputItems");
+    }
+
+    private static void MapConversations(IEndpointRouteBuilder routeGroup, AgentProxy agentProxy, ILoggerFactory? loggerFactory)
+    {
+        var agentName = agentProxy.Name;
+        var conversationsProcessor = new AIAgentConversationsProcessor(agentProxy, loggerFactory);
+
+        routeGroup.MapPost("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
+            => conversationsProcessor.GetConversationAsync(conversationId, cancellationToken)
+        ).WithName(agentName + "/RetrieveConversation");
+
+        //routeGroup.MapGet("/{responseId}", (string responseId,
+        //    CancellationToken cancellationToken,
+        //    [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
+        //    [FromQuery(Name = "starting_after")] string? startingAfter,
+        //    [FromQuery(Name = "stream")] bool stream = false)
+        //    => agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken).ConfigureAwait(false)
+        //).WithName(agentName + "/GetModelResponse");
+
+        //routeGroup.MapDelete("/{responseId}", async (string responseId, CancellationToken cancellationToken) =>
+        //{
+        //    var deleted = await agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
+        //    return Results.Ok(new DeleteModelResponse(deleted));
+        //}).WithName(agentName + "/DeleteResponse");
+
+        //routeGroup.MapPost("/{responseId}/cancel", async (string responseId, CancellationToken cancellationToken) =>
+        //{
+        //    var response = await agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
+        //    return Results.Ok(response);
+        //}).WithName(agentName + "/CancelResponse");
+
+        //routeGroup.MapGet("/{responseId}/input-items", (string responseId,
+        //    CancellationToken cancellationToken,
+        //    [FromQuery(Name = "after")] string? after,
+        //    [FromQuery(Name = "include")] IncludeParameter[]? include,
+        //    [FromQuery(Name = "limit")] int? limit = 20,
+        //    [FromQuery(Name = "order")] string? order = "desc") =>
+        //        agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
+        //    )
+        //    .WithName(agentName + "/ListInputItems");
     }
 }
