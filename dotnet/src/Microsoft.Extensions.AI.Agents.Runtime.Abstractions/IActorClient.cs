@@ -27,4 +27,13 @@ public interface IActorClient
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task representing the actor response handle.</returns>
     ValueTask<ActorResponseHandle> GetResponseAsync(ActorId actorId, string messageId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Gets the runtime context for the specified actor.
+    /// If unable to find the context for the actor, returns null.
+    /// </summary>
+    /// <param name="actorId">The identifier of the actor.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A runtime context to work with the specific actor instance.</returns>
+    ValueTask<IActorRuntimeContext?> GetRuntimeContextAsync(ActorId actorId, CancellationToken cancellationToken);
 }

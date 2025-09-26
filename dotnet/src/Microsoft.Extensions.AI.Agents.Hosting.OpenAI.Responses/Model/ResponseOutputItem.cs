@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Contents;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 
@@ -28,19 +29,4 @@ public class MessageOutput : ResponseOutputItem
 
     [JsonPropertyName("content")]
     public required IList<MessageContent> Content { get; set; }
-}
-
-public class MessageContent
-{
-    public string Type => "output_text";
-
-    [JsonPropertyName("text")]
-    public required string Text { get; set; }
-
-    [JsonPropertyName("annotations")]
-    public IList<AnnotationContent> Annotations { get; set; } = [];
-}
-
-public class AnnotationContent
-{
 }

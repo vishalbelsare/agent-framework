@@ -13,6 +13,9 @@ using Microsoft.Extensions.AI.Agents;
 namespace AgentWebChat.Web;
 
 #pragma warning disable OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+[SuppressMessage("Style", "IDE0051:Remove unused private members", Justification = "for debug / sample purposes")]
+[SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "debug")]
 internal sealed class OpenAIResponsesActorClient : IActorClient
 {
     private readonly string _baseUri;
@@ -23,14 +26,39 @@ internal sealed class OpenAIResponsesActorClient : IActorClient
     }
 
     public ValueTask<ActorResponseHandle> GetResponseAsync(ActorId actorId, string messageId, CancellationToken cancellationToken)
-    {
-        throw new NotImplementedException();
-    }
+        => throw new NotImplementedException();
+
+    public ValueTask<IActorRuntimeContext?> GetRuntimeContextAsync(ActorId actorId, CancellationToken cancellationToken)
+        => throw new NotSupportedException();
 
     public ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)
     {
-        // non-streaming approach. Ideally for chat we should be doing streaming here.
-        return this.SendRequestNonStreamingAsync(request, cancellationToken);
+        // streaming approach
+        return this.SendRequestStreamingAsync(request, cancellationToken);
+
+        // non-streaming approach
+        //return this.SendRequestNonStreamingAsync(request, cancellationToken);
+    }
+
+    private async ValueTask<ActorResponseHandle> SendRequestStreamingAsync(ActorRequest request, CancellationToken cancellationToken)
+    {
+        // this is a "root" of the OpenAI Responses surface for the agent
+        var relativeUri = "/" + request.ActorId.Type + "/v1/";
+
+        OpenAIClientOptions options = new()
+        {
+            Endpoint = new Uri(this._baseUri + relativeUri)
+        };
+
+        OpenAIResponseClient client = new(
+            model: "myModel!",
+            credential: new ApiKeyCredential("dummy-key"),
+            options: options);
+
+        var text = GetFirstMessageText(request);
+        var streamResponseTask = client.CreateResponseStreamingAsync(userInputText: text, cancellationToken: cancellationToken);
+
+        return new OpenAIActorStreamingResponseHandle(request, streamResponseTask);
     }
 
     private async ValueTask<ActorResponseHandle> SendRequestNonStreamingAsync(ActorRequest request, CancellationToken cancellationToken)
@@ -52,12 +80,49 @@ internal sealed class OpenAIResponsesActorClient : IActorClient
         var content = BinaryContent.Create(BinaryData.FromString(data));
         var getResponseTask = client.CreateResponseAsync(content);
 
-        return new OpenAIActorResponseHandle(request, getResponseTask);
+        return new OpenAIActorNonStreamingResponseHandle(request, getResponseTask);
+    }
+
+    private static string GetFirstMessageText(ActorRequest request)
+        => request.Params.GetProperty("messages")[0].GetProperty("contents")[0].GetProperty("text").GetString()!;
+}
+
+internal sealed class OpenAIActorStreamingResponseHandle(
+    ActorRequest request,
+    AsyncCollectionResult<StreamingResponseUpdate> responseTask) : ActorResponseHandle
+{
+    public override ValueTask CancelAsync(CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override ValueTask<ActorResponse> GetResponseAsync(CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override bool TryGetResponse([NotNullWhen(true)] out ActorResponse? response)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override async IAsyncEnumerable<ActorRequestUpdate> WatchUpdatesAsync([EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        Console.Write(request);
+
+        await foreach (var update in responseTask)
+        {
+            if (update is StreamingResponseInProgressUpdate upd)
+            {
+                Console.WriteLine(upd);
+            }
+        }
+
+        yield break;
     }
 }
-#pragma warning restore OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
-internal sealed class OpenAIActorResponseHandle(
+internal sealed class OpenAIActorNonStreamingResponseHandle(
     ActorRequest request,
     Task<ClientResult> responseTask) : ActorResponseHandle
 {
@@ -126,3 +191,5 @@ internal sealed class OpenAIActorResponseHandle(
         }
     }
 }
+
+#pragma warning restore OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.

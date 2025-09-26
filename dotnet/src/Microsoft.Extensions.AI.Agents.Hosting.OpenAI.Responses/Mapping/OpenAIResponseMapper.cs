@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
+using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Contents;
 using Response = Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Response;
 using Microsoft.Extensions.AI.Agents.Runtime;
 
@@ -27,7 +28,9 @@ internal static class OpenAIResponseMapper
             return responseInput.Items!.Select(item =>
             {
                 var role = item.Role.ToChatRole();
-                return new ChatMessage(role, item.Content);
+
+                var aiContents = item.Content.Select(x => new TextContent(x.Text)).ToList<AIContent>();
+                return new ChatMessage(role, aiContents);
             });
         }
 
@@ -48,6 +51,7 @@ internal static class OpenAIResponseMapper
             Status = "completed", // todo
             Content = msg.Contents.OfType<TextContent>().Select(textContent => new MessageContent
             {
+                Type = "output_text",
                 Text = textContent.Text
             }).ToList(),
         }).ToList<ResponseOutputItem>();
@@ -65,10 +69,36 @@ internal static class OpenAIResponseMapper
     }
 
     public static Response ToOpenAIResponse(
-        this AgentRunResponseUpdate agentRunResponseUpdate,
+#pragma warning disable RCS1175 // Unused 'this' parameter
+        this ActorResponseHandle responseHandle,
+#pragma warning restore RCS1175 // Unused 'this' parameter
+        AgentRunResponseUpdate update,
         AgentThread thread,
         OpenAIResponsesRunOptions options)
     {
-        throw new NotImplementedException();
+        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
+
+        // for simplicity only works with text content
+        var output = new MessageOutput
+        {
+            Id = "todo",
+            Status = "completed",
+            Content = update.Contents.OfType<TextContent>().Select(textContent => new MessageContent
+            {
+                Type = "output_text",
+                Text = textContent.Text
+            }).ToList()
+        };
+
+        var responseId = update.ResponseId ?? $"resp_{Guid.NewGuid():N}";
+
+        return new()
+        {
+            Id = responseId,
+            Background = options.Background,
+            Conversation = conversation,
+            CreatedAt = update.CreatedAt is not null ? update.CreatedAt.Value.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Output = [output]
+        };
     }
 }

@@ -12,6 +12,7 @@ using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.AI.Agents.Runtime;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
@@ -54,7 +55,7 @@ internal class AIAgentResponsesProcessor
     private class OpenAIStreamingResponsesResult(
         AgentProxy agentProxy,
         IEnumerable<ChatMessage> chatMessages,
-        AgentThread? thread,
+        AgentThread thread,
         OpenAIResponsesRunOptions options) : IResult
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
@@ -71,15 +72,55 @@ internal class AIAgentResponsesProcessor
             httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
             await response.Body.FlushAsync(cancellationToken);
 
-            await foreach (var update in agentProxy.RunStreamingAsync(chatMessages, thread, options, cancellationToken))
+            var sequenceNumber = 1;
+            StreamingResponse responseChunk;
+            var streamingResponseEventTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(typeof(StreamingResponse));
+
+            var responseHandle = await agentProxy.RunCoreAsync(chatMessages, threadId: thread.ConversationId!, cancellationToken);
+            var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
+            await foreach (var update in responseHandle.WatchUpdatesAsync(cancellationToken).ConfigureAwait(false))
             {
-                // it should map into responses streaming here.
+                if (update.Status is RequestStatus.Failed)
+                {
+                    throw new InvalidOperationException($"The agent run request failed: {update.Data}");
+                }
+
+                // response update representation as in AgentFramework
+                var responseUpdate = (AgentRunResponseUpdate)update.Data.Deserialize(agentRunResponseUpdateTypeInfo)!;
+
+                // OpenAI Responses server events should be represented in a specific format
                 // https://platform.openai.com/docs/api-reference/responses-streaming/response
 
-                var updateTypeInfo = AgentHostingJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
-                var eventData = JsonSerializer.Serialize(update, updateTypeInfo);
-                var eventText = $"data: {eventData}\n\n";
+                // before sending the first update, we should send a "response.created" event
+                if (sequenceNumber == 1)
+                {
+                    responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.Created);
+                    await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+                }
 
+                if (update.Status is RequestStatus.Completed)
+                {
+                    responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.Completed);
+                    await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+                    break;
+                }
+
+                // send all other responses
+                responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.InProgress);
+                await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+
+                StreamingResponse GiveNextStreamingResponseChunk(StreamingResponseType type) => new()
+                {
+                    Type = type,
+                    SequenceNumber = sequenceNumber++,
+                    Response = responseHandle.ToOpenAIResponse(responseUpdate, thread, options)
+                };
+            }
+
+            async ValueTask SendDataAsync<T>(T data, JsonTypeInfo typeInfo)
+            {
+                var eventData = JsonSerializer.Serialize(data, typeInfo);
+                var eventText = $"data: {eventData}\n\n";
                 await response.WriteAsync(eventText, cancellationToken);
                 await response.Body.FlushAsync(cancellationToken);
             }

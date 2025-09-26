@@ -36,6 +36,7 @@ internal sealed class A2AActorClient : IActorClient
     }
 
     public ValueTask<ActorResponseHandle> GetResponseAsync(ActorId actorId, string messageId, CancellationToken cancellationToken) => throw new NotImplementedException();
+    public ValueTask<IActorRuntimeContext?> GetRuntimeContextAsync(ActorId actorId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
     public ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)
     {

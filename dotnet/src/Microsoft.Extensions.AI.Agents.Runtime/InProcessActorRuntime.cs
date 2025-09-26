@@ -38,6 +38,13 @@ internal sealed class InProcessActorRuntime(
     public IActorStateStorage Storage { get; } = storage;
     public IServiceProvider Services { get; } = serviceProvider;
 
+    internal bool TryGetActorRuntimeContext(ActorId actorId, out IActorRuntimeContext? context)
+    {
+        var result = this._actors.TryGetValue(actorId, out var inProcessContext);
+        context = inProcessContext;
+        return result;
+    }
+
     internal InProcessActorContext GetOrCreateActor(ActorId actorId)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -169,6 +176,12 @@ internal sealed class InProcessActorClient(InProcessActorRuntime runtime) : IAct
         }
 
         return new(new NotFoundActorResponseHandle(actorId, messageId));
+    }
+
+    public ValueTask<IActorRuntimeContext?> GetRuntimeContextAsync(ActorId actorId, CancellationToken cancellationToken)
+    {
+        _ = this._runtime.TryGetActorRuntimeContext(actorId, out var context);
+        return new(context);
     }
 
     public ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)

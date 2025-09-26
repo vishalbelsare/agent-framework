@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Contents;
+
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 
 /// <summary>
@@ -56,7 +58,7 @@ public class ResponseInputMessage
     public required OpenAIRole Role { get; set; }
 
     [JsonPropertyName("content")]
-    public string? Content { get; set; }
+    public required IList<MessageContent> Content { get; set; }
 }
 
 /// <summary>

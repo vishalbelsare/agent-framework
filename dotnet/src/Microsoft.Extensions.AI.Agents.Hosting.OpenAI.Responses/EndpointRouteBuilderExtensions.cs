@@ -4,8 +4,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
@@ -105,38 +103,8 @@ public static class EndpointRouteBuilderExtensions
         var agentName = agentProxy.Name;
         var conversationsProcessor = new AIAgentConversationsProcessor(agentProxy, loggerFactory);
 
-        routeGroup.MapPost("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
+        routeGroup.MapGet("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
             => conversationsProcessor.GetConversationAsync(conversationId, cancellationToken)
         ).WithName(agentName + "/RetrieveConversation");
-
-        //routeGroup.MapGet("/{responseId}", (string responseId,
-        //    CancellationToken cancellationToken,
-        //    [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
-        //    [FromQuery(Name = "starting_after")] string? startingAfter,
-        //    [FromQuery(Name = "stream")] bool stream = false)
-        //    => agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken).ConfigureAwait(false)
-        //).WithName(agentName + "/GetModelResponse");
-
-        //routeGroup.MapDelete("/{responseId}", async (string responseId, CancellationToken cancellationToken) =>
-        //{
-        //    var deleted = await agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-        //    return Results.Ok(new DeleteModelResponse(deleted));
-        //}).WithName(agentName + "/DeleteResponse");
-
-        //routeGroup.MapPost("/{responseId}/cancel", async (string responseId, CancellationToken cancellationToken) =>
-        //{
-        //    var response = await agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-        //    return Results.Ok(response);
-        //}).WithName(agentName + "/CancelResponse");
-
-        //routeGroup.MapGet("/{responseId}/input-items", (string responseId,
-        //    CancellationToken cancellationToken,
-        //    [FromQuery(Name = "after")] string? after,
-        //    [FromQuery(Name = "include")] IncludeParameter[]? include,
-        //    [FromQuery(Name = "limit")] int? limit = 20,
-        //    [FromQuery(Name = "order")] string? order = "desc") =>
-        //        agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
-        //    )
-        //    .WithName(agentName + "/ListInputItems");
     }
 }

@@ -21,6 +21,9 @@ internal sealed class HttpActorClient(HttpClient httpClient) : IActorClient
         return new HttpActorResponseHandle(httpClient, actorId, messageId, initialResponseMessage: response);
     }
 
+    public ValueTask<IActorRuntimeContext?> GetRuntimeContextAsync(ActorId actorId, CancellationToken cancellationToken)
+        => throw new NotSupportedException();
+
     public async ValueTask<ActorResponseHandle> SendRequestAsync(ActorRequest request, CancellationToken cancellationToken)
     {
         var actorId = request.ActorId;

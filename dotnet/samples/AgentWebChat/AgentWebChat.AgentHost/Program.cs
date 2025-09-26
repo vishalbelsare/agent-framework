@@ -83,6 +83,8 @@ builder.Services.AddCosmosActorStateStorage("actor-state-db", "ActorState");
 
 var app = builder.Build();
 
+app.UseMiddleware<AgentWebChat.AgentHost.Middlewares.RequestLoggingMiddleware>();
+
 app.MapOpenApi();
 app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Agents API"));
 
