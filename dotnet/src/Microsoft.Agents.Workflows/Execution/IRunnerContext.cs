@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Agents.Workflows.Execution;
 
-internal interface IRunnerContext : IExternalRequestSink
+internal interface IRunnerContext : IExternalRequestSink, ISuperStepJoinContext
 {
     ValueTask AddEventAsync(WorkflowEvent workflowEvent);
     ValueTask SendMessageAsync(string sourceId, object message, string? targetId = null);
