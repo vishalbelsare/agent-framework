@@ -1,21 +1,20 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
+using Microsoft.Extensions.AI.Agents.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.AI.Agents.Runtime;
-using System.Net.ServerSentEvents;
-using System.Runtime.CompilerServices;
-using System.Text.Json.Serialization.Metadata;
-using System.Buffers;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
