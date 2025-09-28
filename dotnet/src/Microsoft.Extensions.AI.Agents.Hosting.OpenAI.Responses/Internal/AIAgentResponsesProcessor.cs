@@ -12,7 +12,10 @@ using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.AI.Agents.Runtime;
+using System.Net.ServerSentEvents;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization.Metadata;
+using System.Buffers;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 
@@ -58,71 +61,68 @@ internal class AIAgentResponsesProcessor
         AgentThread thread,
         OpenAIResponsesRunOptions options) : IResult
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "<Pending>")]
-        public async Task ExecuteAsync(HttpContext httpContext)
+        public Task ExecuteAsync(HttpContext httpContext)
         {
             var cancellationToken = httpContext.RequestAborted;
             var response = httpContext.Response;
+
+            // Set SSE headers
             response.Headers.ContentType = "text/event-stream";
             response.Headers.CacheControl = "no-cache,no-store";
             response.Headers.Connection = "keep-alive";
-
-            // Make sure we disable all response buffering for SSE.
             response.Headers.ContentEncoding = "identity";
             httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
-            await response.Body.FlushAsync(cancellationToken);
 
-            var sequenceNumber = 1;
-            StreamingResponse responseChunk;
             var streamingResponseEventTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(typeof(StreamingResponse));
 
-            var responseHandle = await agentProxy.RunCoreAsync(chatMessages, threadId: thread.ConversationId!, cancellationToken);
+            return SseFormatter.WriteAsync(
+                source: this.GetStreamingResponsesAsync(cancellationToken),
+                destination: response.Body,
+                itemFormatter: (sseItem, bufferWriter) =>
+                {
+                    var json = JsonSerializer.SerializeToUtf8Bytes(sseItem.Data, streamingResponseEventTypeInfo);
+                    bufferWriter.Write(json);
+                },
+                cancellationToken);
+        }
+
+        private async IAsyncEnumerable<SseItem<StreamingResponse>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            var sequenceNumber = 1;
+            var responseHandle = await agentProxy.RunCoreAsync(chatMessages, threadId: thread.ConversationId!, cancellationToken).ConfigureAwait(false);
             var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
-            await foreach (var update in responseHandle.WatchUpdatesAsync(cancellationToken).ConfigureAwait(false))
+
+            await foreach (var update in responseHandle.WatchUpdatesAsync(cancellationToken).WithCancellation(cancellationToken))
             {
                 if (update.Status is RequestStatus.Failed)
                 {
                     throw new InvalidOperationException($"The agent run request failed: {update.Data}");
                 }
 
-                // response update representation as in AgentFramework
                 var responseUpdate = (AgentRunResponseUpdate)update.Data.Deserialize(agentRunResponseUpdateTypeInfo)!;
 
-                // OpenAI Responses server events should be represented in a specific format
-                // https://platform.openai.com/docs/api-reference/responses-streaming/response
-
-                // before sending the first update, we should send a "response.created" event
                 if (sequenceNumber == 1)
                 {
-                    responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.Created);
-                    await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+                    var createdChunk = CreateChunk(StreamingResponseType.Created);
+                    yield return new SseItem<StreamingResponse>(createdChunk);
                 }
 
                 if (update.Status is RequestStatus.Completed)
                 {
-                    responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.Completed);
-                    await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+                    var completedChunk = CreateChunk(StreamingResponseType.Completed);
+                    yield return new SseItem<StreamingResponse>(completedChunk);
                     break;
                 }
 
-                // send all other responses
-                responseChunk = GiveNextStreamingResponseChunk(StreamingResponseType.InProgress);
-                await SendDataAsync(responseChunk, streamingResponseEventTypeInfo);
+                var inProgressChunk = CreateChunk(StreamingResponseType.InProgress);
+                yield return new SseItem<StreamingResponse>(inProgressChunk);
 
-                StreamingResponse GiveNextStreamingResponseChunk(StreamingResponseType type) => new()
+                StreamingResponse CreateChunk(StreamingResponseType type) => new()
                 {
                     Type = type,
                     SequenceNumber = sequenceNumber++,
                     Response = responseHandle.ToOpenAIResponse(responseUpdate, thread, options)
                 };
-            }
-
-            async ValueTask SendDataAsync<T>(T data, JsonTypeInfo typeInfo)
-            {
-                var eventData = JsonSerializer.Serialize(data, typeInfo);
-                var eventText = $"data: {eventData}\n\n";
-                await response.WriteAsync(eventText, cancellationToken);
-                await response.Body.FlushAsync(cancellationToken);
             }
         }
     }

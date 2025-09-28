@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Net.ServerSentEvents" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <ProjectReference Include="..\Microsoft.Extensions.AI.Agents.Abstractions\Microsoft.Extensions.AI.Agents.Abstractions.csproj" />
     <ProjectReference Include="..\Microsoft.Extensions.AI.Agents.Hosting\Microsoft.Extensions.AI.Agents.Hosting.csproj" />
     <ProjectReference Include="..\Microsoft.Extensions.AI.Agents.Runtime.Abstractions\Microsoft.Extensions.AI.Agents.Runtime.Abstractions.csproj" />
