@@ -10,9 +10,8 @@
 @using System.Text
 @using System.Text.Json
 @using Microsoft.Extensions.AI
-@using Microsoft.Extensions.AI.Agents
-@using Microsoft.Extensions.AI.Agents.Hosting
-@using Microsoft.Extensions.AI.Agents.Runtime
+@using Microsoft.Agents.AI.Hosting
+@using Microsoft.Agents.AI.Runtime
 @using A2A
 
 <PageTitle>Agent Web Chat</PageTitle>
@@ -38,7 +37,7 @@
                     <option value="@agent.Name">@GetAgentDisplayName(agent.Name!) - @agent.Description</option>
                 }
             </select>
-            @if (!string.IsNullOrEmpty(selectedAgentName) && currentConversation == null)
+            @if (!string.IsNullOrEmpty(selectedAgentName) && currentConversation is null)
             {
                 <button class="start-chat-btn" @onclick="StartNewConversation">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -122,7 +121,7 @@
                         }
                     </div>
 
-                    @if (discoveredAgentCardJson != null)
+                    @if (discoveredAgentCardJson is not null)
                     {
                         <div class="agent-card-display">
                             <h4 class="card-title">🔗 Discovered Agent Card</h4>
@@ -178,7 +177,7 @@
         </div>
     }
 
-    @if (currentConversation != null)
+    @if (currentConversation is not null)
     {
         <div class="chat-container">
             <div class="chat-messages" id="chat-messages">
@@ -915,7 +914,7 @@
 
 	private sealed class Conversation
 	{
-		public string SessionId { get; set; } = Guid.NewGuid().ToString();
+		public string SessionId { get; set; } = Guid.NewGuid().ToString("N");
 		public string AgentName { get; set; } = "";
 		public List<ChatMessage> Messages { get; set; } = new();
 	}
@@ -1017,7 +1016,7 @@
 	private void SelectConversation(string sessionId)
 	{
 		currentConversation = conversations.FirstOrDefault(c => c.SessionId == sessionId);
-		if (currentConversation != null)
+		if (currentConversation is not null)
 		{
 			selectedAgentName = currentConversation.AgentName;
 			Logger.LogDebug("Selected conversation with session: {SessionId}", sessionId);
@@ -1028,14 +1027,14 @@
 	private void CloseConversation(string sessionId)
 	{
 		var conversationToRemove = conversations.FirstOrDefault(c => c.SessionId == sessionId);
-		if (conversationToRemove != null)
+		if (conversationToRemove is not null)
 		{
 			conversations.Remove(conversationToRemove);
 
 			if (currentConversation?.SessionId == sessionId)
 			{
 				currentConversation = conversations.FirstOrDefault();
-				if (currentConversation != null)
+				if (currentConversation is not null)
 				{
 					selectedAgentName = currentConversation.AgentName;
 				}
@@ -1048,7 +1047,7 @@
 
 	private async Task SendMessage()
 	{
-		if (string.IsNullOrWhiteSpace(currentMessage) || isStreaming || currentConversation == null)
+		if (string.IsNullOrWhiteSpace(currentMessage) || isStreaming || currentConversation is null)
 			return;
 
 		var userMessage = currentMessage.Trim();
@@ -1088,8 +1087,7 @@
 			};
 
             var agent = new AgentProxy(currentConversation.AgentName, actorClient);
-            var thread = agent.GetNewThread();
-            thread.ConversationId = currentConversation.SessionId;
+            var thread = agent.GetNewThread(currentConversation.SessionId);
 
             await foreach (var update in agent.RunStreamingAsync(
             [new ChatMessage(ChatRole.User, userMessage)],
