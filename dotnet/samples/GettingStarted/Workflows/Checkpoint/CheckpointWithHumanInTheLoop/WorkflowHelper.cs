@@ -16,7 +16,7 @@ internal static class WorkflowHelper
     internal static ValueTask<Workflow<NumberSignal>> GetWorkflowAsync()
     {
         // Create the executors
-        InputPort numberInputPort = InputPort.Create<SignalWithNumber, int>("GuessNumber");
+        RequestPort numberInputPort = RequestPort.Create<SignalWithNumber, int>("GuessNumber");
         JudgeExecutor judgeExecutor = new(42);
 
         // Build the workflow by connecting executors in a loop

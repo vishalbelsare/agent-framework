@@ -48,7 +48,7 @@ internal sealed class DeclarativeWorkflowModel
         parentNode.Children.Add(stepNode);
     }
 
-    public void AddPort(InputPort port, string parentId)
+    public void AddPort(RequestPort port, string parentId)
     {
         if (!this.Nodes.TryGetValue(parentId, out ModelNode? parentNode))
         {
@@ -124,7 +124,7 @@ internal sealed class DeclarativeWorkflowModel
         return stepNode;
     }
 
-    private ModelNode DefineNode(InputPort port, ModelNode? parentNode = null)
+    private ModelNode DefineNode(RequestPort port, ModelNode? parentNode = null)
     {
         ModelNode stepNode = new(executor: null!, port, parentNode);
 
@@ -158,13 +158,13 @@ internal sealed class DeclarativeWorkflowModel
         return null;
     }
 
-    private sealed class ModelNode(Executor executor, InputPort? port, ModelNode? parent = null, Action? completionHandler = null)
+    private sealed class ModelNode(Executor executor, RequestPort? port, ModelNode? parent = null, Action? completionHandler = null)
     {
         public string Id => port?.Id ?? executor.Id;
 
         public Executor Executor => executor;
 
-        public InputPort? Port => port;
+        public RequestPort? Port => port;
 
         public Type? ExecutorType => this.Port?.GetType() ?? this.Executor.GetType();
 

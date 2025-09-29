@@ -27,7 +27,7 @@ internal static class RepresentationExtensions
         };
     }
 
-    public static InputPortInfo ToPortInfo(this InputPort port)
+    public static InputPortInfo ToPortInfo(this RequestPort port)
     {
         Throw.IfNull(port);
         return new(new TypeId(port.Request), new TypeId(port.Response), port.Id);

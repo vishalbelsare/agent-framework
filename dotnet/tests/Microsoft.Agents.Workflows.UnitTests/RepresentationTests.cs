@@ -36,8 +36,8 @@ public class RepresentationTests
             throw new NotImplementedException();
     }
 
-    private static InputPort TestInputPort =>
-        InputPort.Create<FunctionCallContent, FunctionResultContent>("ExternalFunction");
+    private static RequestPort TestInputPort =>
+        RequestPort.Create<FunctionCallContent, FunctionResultContent>("ExternalFunction");
 
     private static async ValueTask RunExecutorishInfoMatchTestAsync(ExecutorIsh target)
     {

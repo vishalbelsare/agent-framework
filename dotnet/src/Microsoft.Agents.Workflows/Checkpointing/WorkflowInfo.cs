@@ -75,7 +75,7 @@ internal sealed class WorkflowInfo
         // Validate the input ports
         if (workflow.Ports.Count != this.InputPorts.Count ||
             this.InputPorts.Any(portInfo =>
-                !workflow.Ports.TryGetValue(portInfo.PortId, out InputPort? port) ||
+                !workflow.Ports.TryGetValue(portInfo.PortId, out RequestPort? port) ||
                 !portInfo.RequestType.IsMatch(port.Request) ||
                 !portInfo.ResponseType.IsMatch(port.Response)))
         {

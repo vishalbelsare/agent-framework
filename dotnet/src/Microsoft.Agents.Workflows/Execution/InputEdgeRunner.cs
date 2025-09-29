@@ -11,7 +11,7 @@ internal sealed class InputEdgeRunner(IRunnerContext runContext, string sinkId)
 {
     public IWorkflowContext WorkflowContext { get; } = runContext.Bind(sinkId);
 
-    public static InputEdgeRunner ForPort(IRunnerContext runContext, InputPort port)
+    public static InputEdgeRunner ForPort(IRunnerContext runContext, RequestPort port)
     {
         Throw.IfNull(port);
 

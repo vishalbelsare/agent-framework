@@ -89,7 +89,7 @@ public class JsonSerializationTests
         }
     }
 
-    private static InputPort TestPort => InputPort.Create<string, int>("StringToInt");
+    private static RequestPort TestPort => RequestPort.Create<string, int>("StringToInt");
     private static InputPortInfo TestPortInfo => TestPort.ToPortInfo();
 
     [Fact]
@@ -152,16 +152,16 @@ public class JsonSerializationTests
     private const string IntToStringId = nameof(IntToString);
     private const string StringToIntId = nameof(StringToInt);
 
-    private static InputPortInfo IntToString => InputPort.Create<int, string>(IntToStringId).ToPortInfo();
-    private static InputPortInfo StringToInt => InputPort.Create<string, int>(StringToIntId).ToPortInfo();
+    private static InputPortInfo IntToString => RequestPort.Create<int, string>(IntToStringId).ToPortInfo();
+    private static InputPortInfo StringToInt => RequestPort.Create<string, int>(StringToIntId).ToPortInfo();
 
     private static ValueTask<Workflow<string>> CreateTestWorkflowAsync()
     {
         ForwardMessageExecutor<string> forwardString = new(ForwardStringId);
         ForwardMessageExecutor<int> forwardInt = new(ForwardIntId);
 
-        InputPort stringToInt = InputPort.Create<string, int>(StringToIntId);
-        InputPort intToString = InputPort.Create<int, string>(IntToStringId);
+        RequestPort stringToInt = RequestPort.Create<string, int>(StringToIntId);
+        RequestPort intToString = RequestPort.Create<int, string>(IntToStringId);
 
         WorkflowBuilder builder = new(forwardString);
         builder.AddEdge(forwardString, stringToInt)

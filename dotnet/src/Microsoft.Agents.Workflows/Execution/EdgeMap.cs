@@ -29,7 +29,7 @@ internal sealed class EdgeMap
 
     public EdgeMap(IRunnerContext runContext,
                    Dictionary<string, HashSet<Edge>> workflowEdges,
-                   IEnumerable<InputPort> workflowPorts,
+                   IEnumerable<RequestPort> workflowPorts,
                    string startExecutorId,
                    IStepTracer? stepTracer = null)
     {

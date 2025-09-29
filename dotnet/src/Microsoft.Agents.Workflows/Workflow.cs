@@ -35,7 +35,7 @@ public class Workflow
         );
     }
 
-    internal Dictionary<string, InputPort> Ports { get; init; } = [];
+    internal Dictionary<string, RequestPort> Ports { get; init; } = [];
 
     /// <summary>
     /// Gets the collection of external request ports, keyed by their ID.
