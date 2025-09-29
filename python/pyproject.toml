@@ -192,7 +192,6 @@ build = "python run_tasks_in_packages_if_exists.py build"
 check = ["fmt", "lint", "pyright", "mypy", "test", "markdown-code-lint", "samples-code-check"]
 pre-commit-check = ["fmt", "lint", "pyright", "markdown-code-lint", "samples-code-check"]
 
-
 [tool.poe.tasks.all-tests-cov]
 cmd = """
 pytest --import-mode=importlib
@@ -202,16 +201,11 @@ pytest --import-mode=importlib
 --cov=agent_framework_copilotstudio
 --cov=agent_framework_mem0
 --cov=agent_framework_redis
---cov=agent_framework_runtime
 --cov-report=term-missing:skip-covered
+--ignore-glob=packages/lab/**
+--ignore-glob=packages/devui/**
 -n logical --dist loadfile --dist worksteal
-packages/runtime/tests
-packages/azure-ai/tests
-packages/copilotstudio/tests
-packages/a2a/tests
-packages/main/tests
-packages/mem0/tests
-packages/redis/tests
+packages/**/tests
 """
 
 [tool.poe.tasks.all-tests]
