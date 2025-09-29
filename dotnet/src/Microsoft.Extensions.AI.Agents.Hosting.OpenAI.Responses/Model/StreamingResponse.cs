@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.Text.Json.Serialization;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
@@ -33,4 +34,17 @@ public enum StreamingResponseType
 
     [JsonStringEnumMemberName("response.incomplete")]
     Incomplete
+}
+
+internal static class StreamingResponseTypeExtensions
+{
+    public static string ToEventName(this StreamingResponseType responseType) => responseType switch
+    {
+        StreamingResponseType.Created => "response.created",
+        StreamingResponseType.InProgress => "response.in_progress",
+        StreamingResponseType.Completed => "response.completed",
+        StreamingResponseType.Failed => "response.failed",
+        StreamingResponseType.Incomplete => "response.incomplete",
+        _ => throw new ArgumentOutOfRangeException(nameof(responseType), responseType, null)
+    };
 }

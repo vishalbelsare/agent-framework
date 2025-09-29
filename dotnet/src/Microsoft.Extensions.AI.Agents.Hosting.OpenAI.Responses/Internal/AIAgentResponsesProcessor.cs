@@ -87,6 +87,7 @@ internal class AIAgentResponsesProcessor
 
         private async IAsyncEnumerable<SseItem<StreamingResponse>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            string eventType;
             var sequenceNumber = 1;
             var responseHandle = await agentProxy.RunCoreAsync(chatMessages, threadId: thread.ConversationId!, cancellationToken).ConfigureAwait(false);
             var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
@@ -102,26 +103,30 @@ internal class AIAgentResponsesProcessor
 
                 if (sequenceNumber == 1)
                 {
-                    var createdChunk = CreateChunk(StreamingResponseType.Created);
-                    yield return new SseItem<StreamingResponse>(createdChunk);
+                    var createdChunk = CreateChunk(StreamingResponseType.Created, out eventType);
+                    yield return new SseItem<StreamingResponse>(createdChunk, eventType);
                 }
 
                 if (update.Status is RequestStatus.Completed)
                 {
-                    var completedChunk = CreateChunk(StreamingResponseType.Completed);
-                    yield return new SseItem<StreamingResponse>(completedChunk);
+                    var completedChunk = CreateChunk(StreamingResponseType.Completed, out eventType);
+                    yield return new SseItem<StreamingResponse>(completedChunk, eventType);
                     break;
                 }
 
-                var inProgressChunk = CreateChunk(StreamingResponseType.InProgress);
-                yield return new SseItem<StreamingResponse>(inProgressChunk);
+                var inProgressChunk = CreateChunk(StreamingResponseType.InProgress, out eventType);
+                yield return new SseItem<StreamingResponse>(inProgressChunk, eventType);
 
-                StreamingResponse CreateChunk(StreamingResponseType type) => new()
+                StreamingResponse CreateChunk(StreamingResponseType type, out string eventType)
                 {
-                    Type = type,
-                    SequenceNumber = sequenceNumber++,
-                    Response = responseHandle.ToOpenAIResponse(responseUpdate, thread, options)
-                };
+                    eventType = type.ToEventName();
+                    return new()
+                    {
+                        Type = type,
+                        SequenceNumber = sequenceNumber++,
+                        Response = responseHandle.ToOpenAIResponse(responseUpdate, thread, options)
+                    };
+                }
             }
         }
     }
