@@ -2,7 +2,7 @@
 
 using System;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses;
+namespace Microsoft.Agents.AI.Hosting.Responses;
 
 /// <summary>
 /// Indicates that an OpenAI Responses feature is not supported by the agent framework.

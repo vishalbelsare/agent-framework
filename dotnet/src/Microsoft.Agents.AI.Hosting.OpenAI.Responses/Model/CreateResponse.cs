@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Microsoft.Agents.AI.Hosting.Responses;
 
 namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 

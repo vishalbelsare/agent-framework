@@ -3,13 +3,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Agents.AI.Runtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
-using Microsoft.Extensions.AI.Agents.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
+namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
 
 internal sealed class AIAgentConversationsProcessor
 {

@@ -3,15 +3,16 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using Microsoft.Agents.AI.Hosting.Responses.Internal;
+using Microsoft.Agents.AI.Runtime;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
-using Microsoft.Extensions.AI.Agents.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses;
+namespace Microsoft.Agents.AI.Hosting.Responses;
 
 /// <summary>
 /// Provides extension methods for mapping OpenAI Responses capabilities to an <see cref="AIAgent"/>.

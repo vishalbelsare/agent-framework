@@ -1,9 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
+namespace Microsoft.Agents.AI.Hosting.Responses.Mapping;
 
 internal static class OpenAIRoleMapper
 {

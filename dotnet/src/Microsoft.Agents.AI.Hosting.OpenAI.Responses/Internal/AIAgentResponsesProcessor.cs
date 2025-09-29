@@ -8,15 +8,16 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Agents.AI.Hosting.Responses.Mapping;
+using Microsoft.Agents.AI.Runtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
-using Microsoft.Extensions.AI.Agents.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
+namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
 
 /// <summary>
 /// OpenAI Responses processor associated with a specific <see cref="AIAgent"/>.
@@ -39,7 +40,7 @@ internal class AIAgentResponsesProcessor
     public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
         string conversationId = createResponse.Conversation?.ConversationId ?? $"conv_{Guid.NewGuid():N}";
-        var agentThread = this._agentProxy.GetThread(conversationId);
+        var agentThread = (AgentProxyThread)this._agentProxy.GetNewThread(conversationId);
 
         var options = new OpenAIResponsesRunOptions();
         var chatMessages = createResponse.Input.ToChatMessages();
@@ -57,7 +58,7 @@ internal class AIAgentResponsesProcessor
     private class OpenAIStreamingResponsesResult(
         AgentProxy agentProxy,
         IEnumerable<ChatMessage> chatMessages,
-        AgentThread thread,
+        AgentProxyThread thread,
         OpenAIResponsesRunOptions options) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)

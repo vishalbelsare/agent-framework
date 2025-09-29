@@ -4,12 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
-using Microsoft.Extensions.AI.Agents.Hosting.Responses.Internal;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Contents;
 using Response = Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Response;
-using Microsoft.Extensions.AI.Agents.Runtime;
+using Microsoft.Agents.AI.Hosting.Responses.Internal;
+using Microsoft.Extensions.AI;
+using Microsoft.Agents.AI.Runtime;
 
-namespace Microsoft.Extensions.AI.Agents.Hosting.Responses.Mapping;
+namespace Microsoft.Agents.AI.Hosting.Responses.Mapping;
 
 internal static class OpenAIResponseMapper
 {
@@ -40,7 +41,7 @@ internal static class OpenAIResponseMapper
     public static Response ToOpenAIResponse(
         this AgentRunResponse agentRunResponse,
         ActorType agentType,
-        AgentThread thread,
+        AgentProxyThread thread,
         OpenAIResponsesRunOptions options)
     {
         var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
@@ -73,7 +74,7 @@ internal static class OpenAIResponseMapper
         this ActorResponseHandle responseHandle,
 #pragma warning restore RCS1175 // Unused 'this' parameter
         AgentRunResponseUpdate update,
-        AgentThread thread,
+        AgentProxyThread thread,
         OpenAIResponsesRunOptions options)
     {
         var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
