@@ -62,7 +62,7 @@ def main() -> None:
     parser.add_argument("task", help="Task name to run")
     parser.add_argument("--exclude", action="append", help="Additional packages to exclude (can be used multiple times)")
 
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
 
     pyproject_file = Path(__file__).parent / "pyproject.toml"
     projects = discover_projects(pyproject_file, args.exclude)
@@ -73,22 +73,8 @@ def main() -> None:
         if task_name in tasks:
             print(f"Running task {task_name} in {project}")
             app = PoeThePoet(cwd=project)
-            # Pass remaining args to poe, but exclude our --exclude arguments
-            poe_args = [task_name]
-            # Add any additional arguments that were passed after task name
-            if len(sys.argv) > 2:
-                # Filter out --exclude arguments and their values
-                filtered_args = []
-                skip_next = False
-                for arg in sys.argv[2:]:
-                    if skip_next:
-                        skip_next = False
-                        continue
-                    if arg == "--exclude":
-                        skip_next = True
-                        continue
-                    filtered_args.append(arg)
-                poe_args.extend(filtered_args)
+            # Pass task name and all unknown args to poe
+            poe_args = [task_name] + unknown_args
 
             result = app(cli_args=poe_args)
             if result:
