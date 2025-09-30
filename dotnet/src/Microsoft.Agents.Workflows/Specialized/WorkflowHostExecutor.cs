@@ -102,6 +102,7 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         }
 
         InProcessRunner activeRunner = await this.EnsureRunnerAsync().ConfigureAwait(false);
+        AsyncRunHandle runHandle;
 
         if (this.WithCheckpointing)
         {
@@ -113,18 +114,19 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
                     throw new InvalidOperationException("No checkpoints available to resume from.");
                 }
 
-                this._run = await activeRunner.ResumeStreamAsync(lastCheckpoint!, cancellation)
-                                              .ConfigureAwait(false);
-
+                runHandle = await activeRunner.ResumeStreamAsync(InProcessExecution.DefaultMode, lastCheckpoint!, cancellation)
+                                                             .ConfigureAwait(false);
                 if (incomingMessage != null)
                 {
-                    await this._run.TrySendMessageAsync(incomingMessage).ConfigureAwait(false);
+                    await runHandle.EnqueueUntypedAndRunAsync(incomingMessage, cancellation).ConfigureAwait(false);
                 }
             }
             else if (incomingMessage != null)
             {
-                this._run = await activeRunner.StreamAsync(Throw.IfNull(incomingMessage), cancellation)
-                                              .ConfigureAwait(false);
+                runHandle = await activeRunner.BeginStreamAsync(InProcessExecution.DefaultMode, cancellation)
+                                                             .ConfigureAwait(false);
+
+                await runHandle.EnqueueUntypedAndRunAsync(incomingMessage, cancellation).ConfigureAwait(false);
             }
             else
             {
@@ -133,9 +135,12 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         }
         else
         {
-            this._run = await activeRunner.StreamAsync(Throw.IfNull(incomingMessage), cancellation)
-                                          .ConfigureAwait(false);
+            runHandle = await activeRunner.BeginStreamAsync(InProcessExecution.DefaultMode, cancellation).ConfigureAwait(false);
+
+            await runHandle.EnqueueMessageUntypedAsync(Throw.IfNull(incomingMessage), cancellation: cancellation).ConfigureAwait(false);
         }
+
+        this._run = new(runHandle);
 
         await this._joinContext.AttachSuperstepAsync(activeRunner, cancellation).ConfigureAwait(false);
         activeRunner.WorkflowEvent += this.ForwardWorkflowEventAsync;
@@ -261,7 +266,8 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         {
             this._activeRunner.WorkflowEvent -= this.ForwardWorkflowEventAsync;
             await this._activeRunner.RequestEndRunAsync().ConfigureAwait(false);
-            this._activeRunner = InProcessExecution.CreateRunner(this._workflow, this._checkpointManager, this._runId);
+
+            this._activeRunner = new(this._workflow, this._checkpointManager, this._runId);
         }
     }
 }

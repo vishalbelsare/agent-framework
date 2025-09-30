@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Microsoft.Agents.Workflows.Execution;
 using Microsoft.Shared.Diagnostics;
 
@@ -18,23 +17,38 @@ namespace Microsoft.Agents.Workflows;
 public sealed class StreamingRun
 {
     private TaskCompletionSource<object>? _waitForResponseSource;
-    private readonly ISuperStepRunner _stepRunner;
+    private readonly AsyncRunHandle _runHandle;
 
-    /// <summary>
-    /// Gets a value indicating whether there are any outstanding <see cref="ExternalRequest"/>s for which a
-    /// <see cref="ExternalResponse"/> has not been sent.
-    /// </summary>
-    public bool HasUnservicedRequests => this._stepRunner.HasUnservicedRequests;
-
-    internal StreamingRun(ISuperStepRunner stepRunner)
+    internal StreamingRun(AsyncRunHandle runHandle)
     {
-        this._stepRunner = Throw.IfNull(stepRunner);
+        this._runHandle = Throw.IfNull(runHandle);
+    }
+
+    private async ValueTask WaitForExternalResponseAsync(CancellationToken cancellation = default)
+    {
+        this._waitForResponseSource ??= new();
+
+        using CancellationTokenRegistration registration = cancellation.Register(this.ReleaseResponseWaiter);
+
+        await this._waitForResponseSource.Task.ConfigureAwait(false);
+        this._waitForResponseSource = null;
+    }
+
+    private void ReleaseResponseWaiter()
+    {
+        this._waitForResponseSource?.TrySetResult(new());
     }
 
     /// <summary>
     /// A unique identifier for the run. Can be provided at the start of the run, or auto-generated.
     /// </summary>
-    public string RunId => this._stepRunner.RunId;
+    public string RunId => this._runHandle.RunId;
+
+    /// <summary>
+    /// Gets the current execution status of the workflow run.
+    /// </summary>
+    public ValueTask<RunStatus> GetStatusAsync(CancellationToken cancellation = default)
+        => this._runHandle.GetStatusAsync(cancellation);
 
     /// <summary>
     /// Asynchronously sends the specified response to the external system and signals completion of the current
@@ -45,9 +59,10 @@ public sealed class StreamingRun
     /// <returns>A <see cref="ValueTask"/> that represents the asynchronous send operation.</returns>
     public ValueTask SendResponseAsync(ExternalResponse response)
     {
-        this._waitForResponseSource?.TrySetResult(new());
+        Throw.IfNull(response);
+        this.ReleaseResponseWaiter();
 
-        return this._stepRunner.EnqueueResponseAsync(response);
+        return this._runHandle.EnqueueResponseAsync(response);
     }
 
     /// <summary>
@@ -70,12 +85,17 @@ public sealed class StreamingRun
             return true;
         }
 
-        return await this._stepRunner.EnqueueMessageAsync(message).ConfigureAwait(false);
+        return await this._runHandle.EnqueueMessageAsync(message).ConfigureAwait(false);
     }
 
-    internal async ValueTask<bool> TrySendMessageUntypedAsync(object message, Type messageType)
+    internal async ValueTask<bool> TrySendMessageUntypedAsync(object message, Type? declaredType = null)
     {
         Throw.IfNull(message);
+
+        if (declaredType?.IsInstanceOfType(message) == false)
+        {
+            throw new ArgumentException($"Message is not of the declared type {declaredType}. Actual type: {message.GetType()}", nameof(message));
+        }
 
         if (message is ExternalResponse response)
         {
@@ -83,7 +103,7 @@ public sealed class StreamingRun
             return true;
         }
 
-        return await this._stepRunner.EnqueueMessageUntypedAsync(message, messageType).ConfigureAwait(false);
+        return await this._runHandle.EnqueueMessageUntypedAsync(message, declaredType).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -104,71 +124,28 @@ public sealed class StreamingRun
         bool blockOnPendingRequest,
         [EnumeratorCancellation] CancellationToken cancellation = default)
     {
-        List<WorkflowEvent> eventSink = [];
+        RunStatus runStatus;
 
-        this._stepRunner.WorkflowEvent += OnWorkflowEvent;
-
-        try
+        do
         {
-            do
+            await foreach (WorkflowEvent @event in this._runHandle.TakeEventStreamAsync(breakOnHalt: true, cancellation)
+                                                                  .WithCancellation(cancellation)
+                                                                  .ConfigureAwait(false))
             {
-                // Drain SuperSteps while there are steps to run
-                await this._stepRunner.RunSuperStepAsync(cancellation).ConfigureAwait(false);
-                if (cancellation.IsCancellationRequested)
-                {
-                    yield break; // Exit if cancellation is requested
-                }
+                yield return @event;
+            }
 
-                bool hadCompletionEvent = false;
-                foreach (WorkflowEvent raisedEvent in Interlocked.Exchange(ref eventSink, []))
-                {
-                    if (cancellation.IsCancellationRequested)
-                    {
-                        yield break; // Exit if cancellation is requested
-                    }
+            runStatus = await this._runHandle.GetStatusAsync(cancellation).ConfigureAwait(false);
+            if (runStatus == RunStatus.Idle)
+            {
+                yield break; // We are done.
+            }
 
-                    // TODO: Do we actually want to interpret this as a termination request?
-                    if (raisedEvent is RequestHaltEvent)
-                    {
-                        hadCompletionEvent = true;
-                    }
-                    else
-                    {
-                        yield return raisedEvent;
-                    }
-                }
-
-                if (hadCompletionEvent)
-                {
-                    // If we had a completion event, we are done.
-                    yield break;
-                }
-
-                // If we do not have any actions to take on the Workflow, but have unprocessed
-                // requests, wait for the responses to come in before exiting out of the workflow
-                // execution.
-                if (blockOnPendingRequest &&
-                    !this._stepRunner.HasUnprocessedMessages &&
-                    this._stepRunner.HasUnservicedRequests)
-                {
-                    this._waitForResponseSource ??= new();
-
-                    using CancellationTokenRegistration registration = cancellation.Register(() => this._waitForResponseSource?.SetResult(new()));
-
-                    await this._waitForResponseSource.Task.ConfigureAwait(false);
-                    this._waitForResponseSource = null;
-                }
-            } while (this._stepRunner.HasUnprocessedMessages);
-        }
-        finally
-        {
-            this._stepRunner.WorkflowEvent -= OnWorkflowEvent;
-        }
-
-        void OnWorkflowEvent(object? sender, WorkflowEvent e)
-        {
-            eventSink.Add(e);
-        }
+            if (blockOnPendingRequest && runStatus == RunStatus.PendingRequests)
+            {
+                await this.WaitForExternalResponseAsync(cancellation).ConfigureAwait(false);
+            }
+        } while (runStatus == RunStatus.Running);
     }
 
     /// <summary>
@@ -177,7 +154,10 @@ public sealed class StreamingRun
     /// </summary>
     /// <returns>A ValueTask that represents the asynchronous operation. The task is complete when the run has
     /// ended and cleanup is finished.</returns>
-    public ValueTask EndRunAsync() => this._stepRunner.RequestEndRunAsync();
+    public async ValueTask EndRunAsync()
+    {
+        await this._runHandle.DisposeAsync().ConfigureAwait(false);
+    }
 }
 
 /// <summary>

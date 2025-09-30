@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Agents.Workflows.Execution;
 
 namespace Microsoft.Agents.Workflows;
 
@@ -13,6 +13,11 @@ namespace Microsoft.Agents.Workflows;
 /// </summary>
 public enum RunStatus
 {
+    /// <summary>
+    /// The run has not yet started. This only occurs when running in "lockstep" mode.
+    /// </summary>
+    NotStarted,
+
     /// <summary>
     /// The run has halted, has no outstanding requets, but has not received a <see cref="RequestHaltEvent"/>.
     /// </summary>
@@ -23,11 +28,12 @@ public enum RunStatus
     /// </summary>
     PendingRequests,
 
-    // TODO: Figure out if we want to have some way to have a true "converged" state
-    ///// <summary>
-    ///// The run has halted after converging.
-    ///// </summary>
-    //Completed,
+    /// <summary>
+    /// The user has ended the run. No further events will be emitted, and no messages can be sent to it.
+    /// </summary>
+    /// <seealso cref="StreamingRun.EndRunAsync"/>
+    /// <seealso cref="Run.EndRunAsync"/>
+    Ended,
 
     /// <summary>
     /// The workflow is currently running, and may receive events or requests.
@@ -41,36 +47,21 @@ public enum RunStatus
 /// </summary>
 public sealed class Run
 {
-    internal static async ValueTask<Run> CaptureStreamAsync(StreamingRun run, CancellationToken cancellation = default)
-    {
-        Run result = new(run);
-        await result.RunToNextHaltAsync(cancellation).ConfigureAwait(false);
-        return result;
-    }
-
     private readonly List<WorkflowEvent> _eventSink = [];
-    private readonly StreamingRun _streamingRun;
-    internal Run(StreamingRun streamingRun)
+    private readonly AsyncRunHandle _runHandle;
+    internal Run(AsyncRunHandle _runHandle)
     {
-        this._streamingRun = streamingRun;
+        this._runHandle = _runHandle;
     }
 
     internal async ValueTask<bool> RunToNextHaltAsync(CancellationToken cancellation = default)
     {
         bool hadEvents = false;
-        this.Status = RunStatus.Running;
-        await foreach (WorkflowEvent evt in this._streamingRun.WatchStreamAsync(blockOnPendingRequest: false, cancellation).ConfigureAwait(false))
+        await foreach (WorkflowEvent evt in this._runHandle.TakeEventStreamAsync(breakOnHalt: true, cancellation).ConfigureAwait(false))
         {
             hadEvents = true;
             this._eventSink.Add(evt);
         }
-
-        // TODO: bookmark every halt for history visualization?
-
-        this.Status =
-            this._streamingRun.HasUnservicedRequests
-              ? RunStatus.PendingRequests
-              : RunStatus.Idle;
 
         return hadEvents;
     }
@@ -78,12 +69,13 @@ public sealed class Run
     /// <summary>
     /// A unique identifier for the run. Can be provided at the start of the run, or auto-generated.
     /// </summary>
-    public string RunId => this._streamingRun.RunId;
+    public string RunId => this._runHandle.RunId;
 
     /// <summary>
     /// Gets the current execution status of the workflow run.
     /// </summary>
-    public RunStatus Status { get; private set; }
+    public ValueTask<RunStatus> GetStatusAsync(CancellationToken cancellation = default)
+        => this._runHandle.GetStatusAsync(cancellation);
 
     /// <summary>
     /// Gets all events emitted by the workflow.
@@ -121,7 +113,7 @@ public sealed class Run
     {
         foreach (ExternalResponse response in responses)
         {
-            await this._streamingRun.SendResponseAsync(response).ConfigureAwait(false);
+            await this._runHandle.EnqueueResponseAsync(response).ConfigureAwait(false);
         }
 
         return await this.RunToNextHaltAsync(cancellation).ConfigureAwait(false);
@@ -143,12 +135,12 @@ public sealed class Run
 
         foreach (T message in messages)
         {
-            await this._streamingRun.TrySendMessageAsync(message).ConfigureAwait(false);
+            await this._runHandle.EnqueueMessageAsync(message).ConfigureAwait(false);
         }
 
         return await this.RunToNextHaltAsync(cancellation).ConfigureAwait(false);
     }
 
     /// <inheritdoc cref="StreamingRun.EndRunAsync"/>
-    public ValueTask EndRunAsync() => this._streamingRun.EndRunAsync();
+    public ValueTask EndRunAsync() => this._runHandle.RequestEndRunAsync();
 }
