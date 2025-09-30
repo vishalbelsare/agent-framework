@@ -7,8 +7,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting;
 using Microsoft.Agents.AI.Hosting.A2A.AspNetCore;
 using Microsoft.Agents.AI.Runtime.Storage.CosmosDB;
-using Microsoft.Agents.Workflows;
-using Microsoft.Agents.AI.Hosting.Responses;
+using Microsoft.Agents.AI.Workflows;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.AI;
 
@@ -86,8 +85,6 @@ builder.Services.AddCosmosActorStateStorage("actor-state-db", "ActorState");
 
 var app = builder.Build();
 
-app.UseMiddleware<AgentWebChat.AgentHost.Middlewares.RequestLoggingMiddleware>();
-
 app.MapOpenApi();
 app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "Agents API"));
 
@@ -97,8 +94,8 @@ app.UseExceptionHandler();
 app.MapActors();
 
 // attach a2a with simple message communication
-app.AttachA2A(agentName: "pirate", path: "/a2a/pirate");
-app.AttachA2A(agentName: "knights-and-knaves", path: "/a2a/knights-and-knaves", agentCard: new()
+app.MapA2A(agentName: "pirate", path: "/a2a/pirate");
+app.MapA2A(agentName: "knights-and-knaves", path: "/a2a/knights-and-knaves", agentCard: new()
 {
     Name = "Knights and Knaves",
     Description = "An agent that helps you solve the knights and knaves puzzle.",
