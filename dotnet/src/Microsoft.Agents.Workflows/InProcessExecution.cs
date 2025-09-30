@@ -16,7 +16,7 @@ namespace Microsoft.Agents.Workflows;
 /// </summary>
 public sealed class InProcessExecution
 {
-    private static InProcessExecution DefaultInstance { get; } = new(ExecutionMode.Lockstep);
+    private static InProcessExecution DefaultInstance { get; } = new(ExecutionMode.Normal);
 
     private readonly ExecutionMode _executionMode;
     private InProcessExecution(ExecutionMode mode)

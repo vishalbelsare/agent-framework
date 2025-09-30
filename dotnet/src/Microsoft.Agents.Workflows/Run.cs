@@ -127,15 +127,26 @@ public sealed class Run
     /// input types to the starting executor or a <see cref="ExternalResponse"/>.</param>
     /// <returns><c>true</c> if the workflow had any output events, <c>false</c> otherwise.</returns>
     public async ValueTask<bool> ResumeAsync<T>(CancellationToken cancellation = default, params IEnumerable<T> messages)
+        where T : notnull
     {
         if (messages is IEnumerable<ExternalResponse> responses)
         {
             return await this.ResumeAsync(cancellation, responses).ConfigureAwait(false);
         }
 
-        foreach (T message in messages)
+        if (typeof(T) == typeof(object))
         {
-            await this._runHandle.EnqueueMessageAsync(message).ConfigureAwait(false);
+            foreach (object? message in messages)
+            {
+                await this._runHandle.EnqueueMessageUntypedAsync(message, cancellation: cancellation).ConfigureAwait(false);
+            }
+        }
+        else
+        {
+            foreach (T message in messages)
+            {
+                await this._runHandle.EnqueueMessageAsync(message, cancellation).ConfigureAwait(false);
+            }
         }
 
         return await this.RunToNextHaltAsync(cancellation).ConfigureAwait(false);

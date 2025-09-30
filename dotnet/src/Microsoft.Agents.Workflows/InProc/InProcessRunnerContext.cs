@@ -33,7 +33,15 @@ internal sealed class InProcessRunnerContext : IRunnerContext
 
     private readonly ConcurrentDictionary<string, ExternalRequest> _externalRequests = new();
 
-    public InProcessRunnerContext(Workflow workflow, string runId, bool withCheckpointing, IStepTracer? stepTracer, object? workflowOwnership = null, bool subworkflow = false, ILogger? logger = null)
+    public InProcessRunnerContext(
+        Workflow workflow,
+        string runId,
+        bool withCheckpointing,
+        IEventSink outgoingEvents,
+        IStepTracer? stepTracer,
+        object? workflowOwnership = null,
+        bool subworkflow = false,
+        ILogger? logger = null)
     {
         workflow.TakeOwnership(this, existingOwnershipSignoff: workflowOwnership);
         this._workflow = workflow;
@@ -43,6 +51,7 @@ internal sealed class InProcessRunnerContext : IRunnerContext
         this._outputFilter = new(workflow);
 
         this.WithCheckpointing = withCheckpointing;
+        this.OutgoingEvents = outgoingEvents;
     }
 
     public async ValueTask<Executor> EnsureExecutorAsync(string executorId, IStepTracer? tracer)
@@ -150,8 +159,7 @@ internal sealed class InProcessRunnerContext : IRunnerContext
     public ValueTask AddEventAsync(WorkflowEvent workflowEvent)
     {
         this.CheckEnded();
-        this.QueuedEvents.Add(workflowEvent);
-        return default;
+        return this.OutgoingEvents.EnqueueAsync(workflowEvent);
     }
 
     public async ValueTask SendMessageAsync(string sourceId, object message, string? targetId = null)
@@ -195,7 +203,7 @@ internal sealed class InProcessRunnerContext : IRunnerContext
         return this._externalRequests.TryRemove(requestId, out _);
     }
 
-    public readonly List<WorkflowEvent> QueuedEvents = [];
+    private IEventSink OutgoingEvents { get; }
 
     internal StateManager StateManager { get; } = new();
 
@@ -268,11 +276,6 @@ internal sealed class InProcessRunnerContext : IRunnerContext
     {
         this.CheckEnded();
 
-        if (this.QueuedEvents.Count > 0)
-        {
-            throw new InvalidOperationException("Cannot export state when there are queued events. Please process or clear the events before exporting state.");
-        }
-
         Dictionary<string, List<PortableMessageEnvelope>> queuedMessages = this._nextStep.ExportMessages();
         RunnerStateData result = new(instantiatedExecutors: [.. this._executors.Keys],
                                      queuedMessages,
@@ -298,11 +301,6 @@ internal sealed class InProcessRunnerContext : IRunnerContext
     internal async ValueTask ImportStateAsync(Checkpoint checkpoint)
     {
         this.CheckEnded();
-
-        if (this.QueuedEvents.Count > 0)
-        {
-            throw new InvalidOperationException("Cannot import state when there are queued events. Please process or clear the events before importing state.");
-        }
 
         RunnerStateData importedState = checkpoint.RunnerData;
 

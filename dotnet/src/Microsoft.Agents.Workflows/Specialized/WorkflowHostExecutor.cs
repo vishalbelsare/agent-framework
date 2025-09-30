@@ -143,7 +143,7 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         this._run = new(runHandle);
 
         await this._joinContext.AttachSuperstepAsync(activeRunner, cancellation).ConfigureAwait(false);
-        activeRunner.WorkflowEvent += this.ForwardWorkflowEventAsync;
+        activeRunner.OutgoingEvents.EventRaised += this.ForwardWorkflowEventAsync;
 
         return this._run;
     }
@@ -165,9 +165,7 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         return internalRequest with { PortInfo = requestPort };
     }
 
-    [SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "This is used as an EventHandler and catches all catchable Exceptions.")]
-    [SuppressMessage("Style", "VSTHRD200:Use \"Async\" suffix for async methods", Justification = "This analyzer is misfiring.")]
-    private async void ForwardWorkflowEventAsync(object? sender, WorkflowEvent evt)
+    private async ValueTask ForwardWorkflowEventAsync(object? sender, WorkflowEvent evt)
     {
         // Note that we are explicitly not using the checked JoinContext property here, because this is an async callback.
         try
@@ -213,11 +211,6 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
         }
         catch (Exception ex)
         {
-            // We want to avoid throwing from an event handler, as that can crash the process. Unfortunately that also
-            // means we cannot await this, but this is okay, because it definitely does not involve sending a message,
-            // and thus does not need to be coordinated with SuperSteps, except when running in lockstep mode (which
-            // will make it do so automatically because events will not pump when the subworkflow is not running a
-            // superstep, and those are driven by the parent through the ISuperStepJoinContext).
             try
             {
                 _ = this._joinContext?.ForwardWorkflowEventAsync(new SubworkflowErrorEvent(this.Id, ex)).AsTask();
@@ -264,7 +257,7 @@ internal class WorkflowHostExecutor : Executor, IResettableExecutor
 
         if (this._activeRunner != null)
         {
-            this._activeRunner.WorkflowEvent -= this.ForwardWorkflowEventAsync;
+            this._activeRunner.OutgoingEvents.EventRaised -= this.ForwardWorkflowEventAsync;
             await this._activeRunner.RequestEndRunAsync().ConfigureAwait(false);
 
             this._activeRunner = new(this._workflow, this._checkpointManager, this._runId);

@@ -11,7 +11,7 @@ using Microsoft.Shared.Diagnostics;
 
 namespace Microsoft.Agents.Workflows.Execution;
 
-internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable
+internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, IInputCoordinator
 {
     private readonly AsyncCoordinator _waitForResponseCoordinator = new();
     private readonly ISuperStepRunner _stepRunner;
@@ -29,13 +29,14 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable
 
         this._eventStream = mode switch
         {
-            ExecutionMode.Normal => new OffThreadRunEventStream(stepRunner),
+            ExecutionMode.Normal => new OffThreadRunEventStream(stepRunner, this),
             ExecutionMode.Lockstep => new LockstepRunEventStream(stepRunner),
             _ => throw new ArgumentOutOfRangeException(nameof(mode), $"Unknown execution mode {mode}")
         };
+        this._eventStream.Start();
     }
 
-    public ValueTask WaitForExternalResponseAsync(CancellationToken cancellation = default)
+    public ValueTask WaitForNextInputAsync(CancellationToken cancellation = default)
         => this._waitForResponseCoordinator.WaitForCoordinationAsync(cancellation);
 
     public void ReleaseResponseWaiter() => this._waitForResponseCoordinator.MarkCoordinationPoint();
@@ -60,7 +61,7 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable
 
         try
         {
-            await foreach (WorkflowEvent @event in this._eventStream.WatchStreamAsync(linkedSource.Token)
+            await foreach (WorkflowEvent @event in this._eventStream.TakeEventStreamAsync(linkedSource.Token)
                                                                     .ConfigureAwait(false))
             {
                 yield return @event;
@@ -75,50 +76,62 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable
     public ValueTask<bool> IsValidInputTypeAsync<T>(CancellationToken cancellation = default)
         => this._stepRunner.IsValidInputTypeAsync<T>(cancellation);
 
-    public ValueTask<bool> EnqueueMessageAsync<T>(T message, CancellationToken cancellation = default)
-        => this._stepRunner.EnqueueMessageAsync(message, cancellation);
-
-    //{
-    //    //if (message is ExternalResponse response)
-    //    //{
-    //    //    await this.EnqueueResponseAsync(response, cancellation)
-    //    //              .ConfigureAwait(false);
-
-    //    //    return true;
-    //    //}
-
-    //    return await this._stepRunner.EnqueueMessageAsync(message, cancellation)
-    //                                 .ConfigureAwait(false);
-    //}
-
-    public ValueTask<bool> EnqueueMessageUntypedAsync([NotNull] object message, Type? declaredType = null, CancellationToken cancellation = default)
-        => this._stepRunner.EnqueueMessageAsync(message, cancellation);
-
-    //{
-    //    //if (declaredType != null && typeof(ExternalRequest).IsAssignableFrom(declaredType))
-    //    //{
-    //    //    await this.EnqueueResponseAsync((ExternalResponse)message, cancellation)
-    //    //              .ConfigureAwait(false);
-
-    //    //    return true;
-    //    //}
-    //    //else if (declaredType == null && message is ExternalResponse response)
-    //    //{
-    //    //    await this.EnqueueResponseAsync(response, cancellation)
-    //    //              .ConfigureAwait(false);
-
-    //    //    return true;
-    //    //}
-
-    //    return await this._stepRunner.EnqueueMessageAsync(message, cancellation)
-    //                                 .ConfigureAwait(false);
-    //}
-
-    public ValueTask EnqueueResponseAsync(ExternalResponse response, CancellationToken cancellation = default)
+    public async ValueTask<bool> EnqueueMessageAsync<T>(T message, CancellationToken cancellation = default)
     {
+        if (message is ExternalResponse response)
+        {
+            // EnqueueResponseAsync marks the coordination point itself
+            await this.EnqueueResponseAsync(response, cancellation)
+                      .ConfigureAwait(false);
+
+            return true;
+        }
+
+        bool result = await this._stepRunner.EnqueueMessageAsync(message, cancellation)
+                                            .ConfigureAwait(false);
+
         this._waitForResponseCoordinator.MarkCoordinationPoint();
 
-        return this._stepRunner.EnqueueResponseAsync(response, cancellation);
+        return result;
+    }
+
+    public async ValueTask<bool> EnqueueMessageUntypedAsync([NotNull] object message, Type? declaredType = null, CancellationToken cancellation = default)
+    {
+        if (declaredType?.IsInstanceOfType(message) == false)
+        {
+            throw new ArgumentException($"Message is not of the declared type {declaredType}. Actual type: {message.GetType()}", nameof(message));
+        }
+
+        if (declaredType != null && typeof(ExternalRequest).IsAssignableFrom(declaredType))
+        {
+            // EnqueueResponseAsync marks the coordination point itself
+            await this.EnqueueResponseAsync((ExternalResponse)message, cancellation)
+                      .ConfigureAwait(false);
+
+            return true;
+        }
+        else if (declaredType == null && message is ExternalResponse response)
+        {
+            // EnqueueResponseAsync marks the coordination point itself
+            await this.EnqueueResponseAsync(response, cancellation)
+                      .ConfigureAwait(false);
+
+            return true;
+        }
+
+        bool result = await this._stepRunner.EnqueueMessageUntypedAsync(message, declaredType ?? message.GetType(), cancellation)
+                                            .ConfigureAwait(false);
+
+        this._waitForResponseCoordinator.MarkCoordinationPoint();
+
+        return result;
+    }
+
+    public async ValueTask EnqueueResponseAsync(ExternalResponse response, CancellationToken cancellation = default)
+    {
+        await this._stepRunner.EnqueueResponseAsync(response, cancellation).ConfigureAwait(false);
+
+        this._waitForResponseCoordinator.MarkCoordinationPoint();
     }
 
     public ValueTask RequestEndRunAsync()

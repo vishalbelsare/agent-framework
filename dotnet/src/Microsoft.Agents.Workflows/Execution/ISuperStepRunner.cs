@@ -19,7 +19,7 @@ internal interface ISuperStepRunner
     ValueTask<bool> EnqueueMessageAsync<T>(T message, CancellationToken cancellation = default);
     ValueTask<bool> EnqueueMessageUntypedAsync(object message, Type declaredType, CancellationToken cancellation = default);
 
-    event EventHandler<WorkflowEvent>? WorkflowEvent;
+    ConcurrentEventSink OutgoingEvents { get; }
 
     ValueTask<bool> RunSuperStepAsync(CancellationToken cancellation);
 

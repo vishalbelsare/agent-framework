@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -19,11 +20,16 @@ internal sealed class LockstepRunEventStream : IRunEventStream
     private RunStatus RunStatus { get; set; } = RunStatus.NotStarted;
     private ISuperStepRunner StepRunner { get; }
 
-    public async IAsyncEnumerable<WorkflowEvent> WatchStreamAsync([EnumeratorCancellation] CancellationToken cancellation = default)
+    public void Start()
     {
-        List<WorkflowEvent> eventSink = [];
+        // No-op for lockstep execution
+    }
 
-        this.StepRunner.WorkflowEvent += OnWorkflowEvent;
+    public async IAsyncEnumerable<WorkflowEvent> TakeEventStreamAsync([EnumeratorCancellation] CancellationToken cancellation = default)
+    {
+        ConcurrentQueue<WorkflowEvent> eventSink = [];
+
+        this.StepRunner.OutgoingEvents.EventRaised += OnWorkflowEventAsync;
 
         try
         {
@@ -68,12 +74,13 @@ internal sealed class LockstepRunEventStream : IRunEventStream
         finally
         {
             this.RunStatus = this.StepRunner.HasUnservicedRequests ? RunStatus.PendingRequests : RunStatus.Idle;
-            this.StepRunner.WorkflowEvent -= OnWorkflowEvent;
+            this.StepRunner.OutgoingEvents.EventRaised -= OnWorkflowEventAsync;
         }
 
-        void OnWorkflowEvent(object? sender, WorkflowEvent e)
+        ValueTask OnWorkflowEventAsync(object? sender, WorkflowEvent e)
         {
-            eventSink.Add(e);
+            eventSink.Enqueue(e);
+            return default;
         }
     }
 

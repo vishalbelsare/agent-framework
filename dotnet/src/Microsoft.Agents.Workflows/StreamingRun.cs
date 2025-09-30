@@ -16,7 +16,6 @@ namespace Microsoft.Agents.Workflows;
 /// </summary>
 public sealed class StreamingRun
 {
-    private TaskCompletionSource<object>? _waitForResponseSource;
     private readonly AsyncRunHandle _runHandle;
 
     internal StreamingRun(AsyncRunHandle runHandle)
@@ -24,20 +23,8 @@ public sealed class StreamingRun
         this._runHandle = Throw.IfNull(runHandle);
     }
 
-    private async ValueTask WaitForExternalResponseAsync(CancellationToken cancellation = default)
-    {
-        this._waitForResponseSource ??= new();
-
-        using CancellationTokenRegistration registration = cancellation.Register(this.ReleaseResponseWaiter);
-
-        await this._waitForResponseSource.Task.ConfigureAwait(false);
-        this._waitForResponseSource = null;
-    }
-
-    private void ReleaseResponseWaiter()
-    {
-        this._waitForResponseSource?.TrySetResult(new());
-    }
+    private ValueTask WaitOnInputAsync(CancellationToken cancellation = default)
+        => this._runHandle.WaitForNextInputAsync(cancellation);
 
     /// <summary>
     /// A unique identifier for the run. Can be provided at the start of the run, or auto-generated.
@@ -58,12 +45,7 @@ public sealed class StreamingRun
     /// <param name="response">The <see cref="ExternalResponse"/> to send. Must not be <c>null</c>.</param>
     /// <returns>A <see cref="ValueTask"/> that represents the asynchronous send operation.</returns>
     public ValueTask SendResponseAsync(ExternalResponse response)
-    {
-        Throw.IfNull(response);
-        this.ReleaseResponseWaiter();
-
-        return this._runHandle.EnqueueResponseAsync(response);
-    }
+        => this._runHandle.EnqueueResponseAsync(response);
 
     /// <summary>
     /// Attempts to send the specified message asynchronously and returns a value indicating whether the operation was
@@ -75,36 +57,11 @@ public sealed class StreamingRun
     /// <returns>A <see cref="ValueTask{Boolean}"/> that represents the asynchronous send operation. It's
     /// <see cref="ValueTask{Boolean}.Result"/> is <see langword="true"/> if the message was sent
     /// successfully; otherwise, <see langword="false"/>.</returns>
-    public async ValueTask<bool> TrySendMessageAsync<TMessage>(TMessage message)
-    {
-        Throw.IfNull(message);
+    public ValueTask<bool> TrySendMessageAsync<TMessage>(TMessage message)
+        => this._runHandle.EnqueueMessageAsync(message);
 
-        if (message is ExternalResponse response)
-        {
-            await this.SendResponseAsync(response).ConfigureAwait(false);
-            return true;
-        }
-
-        return await this._runHandle.EnqueueMessageAsync(message).ConfigureAwait(false);
-    }
-
-    internal async ValueTask<bool> TrySendMessageUntypedAsync(object message, Type? declaredType = null)
-    {
-        Throw.IfNull(message);
-
-        if (declaredType?.IsInstanceOfType(message) == false)
-        {
-            throw new ArgumentException($"Message is not of the declared type {declaredType}. Actual type: {message.GetType()}", nameof(message));
-        }
-
-        if (message is ExternalResponse response)
-        {
-            await this.SendResponseAsync(response).ConfigureAwait(false);
-            return true;
-        }
-
-        return await this._runHandle.EnqueueMessageUntypedAsync(message, declaredType).ConfigureAwait(false);
-    }
+    internal ValueTask<bool> TrySendMessageUntypedAsync(object message, Type? declaredType = null)
+        => this._runHandle.EnqueueMessageUntypedAsync(message, declaredType);
 
     /// <summary>
     /// Asynchronously streams workflow events as they occur during workflow execution.
@@ -132,6 +89,8 @@ public sealed class StreamingRun
                                                                   .WithCancellation(cancellation)
                                                                   .ConfigureAwait(false))
             {
+                Console.WriteLine($"Emitted Event: {@event.GetType().Name}");
+                Console.WriteLine($"\t\t {@event}");
                 yield return @event;
             }
 
@@ -143,7 +102,9 @@ public sealed class StreamingRun
 
             if (blockOnPendingRequest && runStatus == RunStatus.PendingRequests)
             {
-                await this.WaitForExternalResponseAsync(cancellation).ConfigureAwait(false);
+                // Although we are only doing this while there are pending requests, any input allows us to continue
+                // running, so we should not wait until the input is specifically an ExternalResponse.
+                await this.WaitOnInputAsync(cancellation).ConfigureAwait(false);
             }
         } while (runStatus == RunStatus.Running);
     }

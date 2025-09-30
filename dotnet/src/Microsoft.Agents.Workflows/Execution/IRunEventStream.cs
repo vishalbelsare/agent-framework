@@ -9,6 +9,7 @@ namespace Microsoft.Agents.Workflows.Execution;
 
 internal interface IRunEventStream : IAsyncDisposable
 {
+    void Start();
     ValueTask<RunStatus> GetStatusAsync(CancellationToken cancellation = default);
-    IAsyncEnumerable<WorkflowEvent> WatchStreamAsync(CancellationToken cancellation = default);
+    IAsyncEnumerable<WorkflowEvent> TakeEventStreamAsync(CancellationToken cancellation = default);
 }

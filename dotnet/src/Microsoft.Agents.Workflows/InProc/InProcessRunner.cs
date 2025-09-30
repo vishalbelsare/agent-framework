@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,7 +26,7 @@ internal sealed class InProcessRunner : ISuperStepRunner, ICheckpointingHandle
         this.RunId = runId ?? Guid.NewGuid().ToString("N");
 
         this.Workflow = Throw.IfNull(workflow);
-        this.RunContext = new InProcessRunnerContext(workflow, this.RunId, withCheckpointing: checkpointManager != null, this.StepTracer, workflowOwnership, subworkflow);
+        this.RunContext = new InProcessRunnerContext(workflow, this.RunId, withCheckpointing: checkpointManager != null, this.OutgoingEvents, this.StepTracer, workflowOwnership, subworkflow);
         this.CheckpointManager = checkpointManager;
 
         this._knownValidInputTypes = knownValidInputTypes != null
@@ -100,12 +101,10 @@ internal sealed class InProcessRunner : ISuperStepRunner, ICheckpointingHandle
     private ICheckpointManager? CheckpointManager { get; }
     private EdgeMap EdgeMap { get; init; }
 
-    public event EventHandler<WorkflowEvent>? WorkflowEvent;
+    public ConcurrentEventSink OutgoingEvents { get; } = new();
 
-    private void RaiseWorkflowEvent(WorkflowEvent workflowEvent)
-    {
-        this.WorkflowEvent?.Invoke(this, workflowEvent);
-    }
+    private ValueTask RaiseWorkflowEventAsync(WorkflowEvent workflowEvent)
+        => this.OutgoingEvents.EnqueueAsync(workflowEvent);
 
     public ValueTask<AsyncRunHandle> BeginStreamAsync(ExecutionMode mode, CancellationToken cancellation = default)
     {
@@ -149,28 +148,15 @@ internal sealed class InProcessRunner : ISuperStepRunner, ICheckpointingHandle
             return true;
         }
 
-        this.EmitPendingEvents();
         return false;
     }
 
-    private void EmitPendingEvents()
-    {
-        if (this.RunContext.QueuedEvents.Count > 0)
-        {
-            foreach (WorkflowEvent @event in this.RunContext.QueuedEvents)
-            {
-                this.RaiseWorkflowEvent(@event);
-            }
-            this.RunContext.QueuedEvents.Clear();
-        }
-    }
-
-    private async ValueTask DeliverMessagesAsync(string receiverId, List<MessageEnvelope> envelopes)
+    private async ValueTask DeliverMessagesAsync(string receiverId, ConcurrentQueue<MessageEnvelope> envelopes)
     {
         Executor executor = await this.RunContext.EnsureExecutorAsync(receiverId, this.StepTracer).ConfigureAwait(false);
 
         this.StepTracer.TraceActivated(receiverId);
-        foreach (MessageEnvelope envelope in envelopes)
+        while (envelopes.TryDequeue(out var envelope))
         {
             await executor.ExecuteAsync(envelope.Message, envelope.MessageType, this.RunContext.Bind(receiverId))
                           .ConfigureAwait(false);
@@ -179,7 +165,7 @@ internal sealed class InProcessRunner : ISuperStepRunner, ICheckpointingHandle
 
     private async ValueTask RunSuperstepAsync(StepContext currentStep)
     {
-        this.RaiseWorkflowEvent(this.StepTracer.Advance(currentStep));
+        await this.RaiseWorkflowEventAsync(this.StepTracer.Advance(currentStep)).ConfigureAwait(false);
 
         // Deliver the messages and queue the next step
         List<Task> receiverTasks =
@@ -204,12 +190,10 @@ internal sealed class InProcessRunner : ISuperStepRunner, ICheckpointingHandle
 
         await Task.WhenAll(subworkflowTasks).ConfigureAwait(false);
 
-        // After the message handler invocations, we may have some events to deliver
-        this.EmitPendingEvents();
-
         await this.CheckpointAsync().ConfigureAwait(false);
 
-        this.RaiseWorkflowEvent(this.StepTracer.Complete(this.RunContext.NextStepHasActions, this.RunContext.HasUnservicedRequests));
+        await this.RaiseWorkflowEventAsync(this.StepTracer.Complete(this.RunContext.NextStepHasActions, this.RunContext.HasUnservicedRequests))
+                  .ConfigureAwait(false);
     }
 
     private WorkflowInfo? _workflowInfoCache;
