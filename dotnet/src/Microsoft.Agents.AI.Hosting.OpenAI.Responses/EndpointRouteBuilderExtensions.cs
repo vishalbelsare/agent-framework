@@ -4,7 +4,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.Agents.AI.Hosting.Responses.Internal;
-using Microsoft.Agents.AI.Runtime;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.AI;
@@ -37,26 +36,23 @@ public static class EndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentNullException.ThrowIfNull(agentName, nameof(agentName));
 
+        var loggerFactory = endpoints.ServiceProvider.GetService<ILoggerFactory>();
         var agent = endpoints.ServiceProvider.GetRequiredKeyedService<AIAgent>(agentName);
         ArgumentNullException.ThrowIfNull(agent.Name, nameof(agent.Name));
 
-        var loggerFactory = endpoints.ServiceProvider.GetService<ILoggerFactory>();
-        var actorClient = endpoints.ServiceProvider.GetRequiredService<IActorClient>();
-        var agentProxy = new AgentProxy(agent.Name, actorClient);
-
         responsesPath ??= $"/{agentName}/v1/responses";
         var responsesRouteGroup = endpoints.MapGroup(responsesPath);
-        MapResponses(responsesRouteGroup, agentProxy, loggerFactory);
+        MapResponses(responsesRouteGroup, agent, loggerFactory);
 
         conversationsPath ??= $"/{agentName}/v1/conversations";
         var conversationsRouteGroup = endpoints.MapGroup(conversationsPath);
-        MapConversations(conversationsRouteGroup, agentProxy, loggerFactory);
+        MapConversations(conversationsRouteGroup, agent, loggerFactory);
     }
 
-    private static void MapResponses(IEndpointRouteBuilder routeGroup, AgentProxy agentProxy, ILoggerFactory? loggerFactory)
+    private static void MapResponses(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
     {
-        var agentName = agentProxy.Name;
-        var responsesProcessor = new AIAgentResponsesProcessor(agentProxy, loggerFactory);
+        var agentName = agent.Name;
+        var responsesProcessor = new AIAgentResponsesProcessor(agent, loggerFactory);
 
         routeGroup.MapPost("/", (CreateResponse createResponse, CancellationToken cancellationToken)
             => responsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken)
@@ -99,10 +95,10 @@ public static class EndpointRouteBuilderExtensions
         //    .WithName(agentName + "/ListInputItems");
     }
 
-    private static void MapConversations(IEndpointRouteBuilder routeGroup, AgentProxy agentProxy, ILoggerFactory? loggerFactory)
+    private static void MapConversations(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
     {
-        var agentName = agentProxy.Name;
-        var conversationsProcessor = new AIAgentConversationsProcessor(agentProxy, loggerFactory);
+        var agentName = agent.Name;
+        var conversationsProcessor = new AIAgentConversationsProcessor(agent, loggerFactory);
 
         routeGroup.MapGet("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
             => conversationsProcessor.GetConversationAsync(conversationId, cancellationToken)

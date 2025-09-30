@@ -8,7 +8,6 @@ using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Contents;
 using Response = Microsoft.Extensions.AI.Agents.Hosting.Responses.Model.Response;
 using Microsoft.Agents.AI.Hosting.Responses.Internal;
 using Microsoft.Extensions.AI;
-using Microsoft.Agents.AI.Runtime;
 
 namespace Microsoft.Agents.AI.Hosting.Responses.Mapping;
 
@@ -40,11 +39,12 @@ internal static class OpenAIResponseMapper
 
     public static Response ToOpenAIResponse(
         this AgentRunResponse agentRunResponse,
-        ActorType agentType,
-        AgentProxyThread thread,
+        string agentName,
+        AgentThread thread,
         OpenAIResponsesRunOptions options)
     {
-        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
+        // load conversation from the thread?
+        Conversation conversation = null!; // thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
 
         var output = agentRunResponse.Messages.Select(msg => new MessageOutput
         {

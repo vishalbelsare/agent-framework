@@ -3,19 +3,20 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Agents.AI.Hosting.Responses.Mapping;
-using Microsoft.Agents.AI.Runtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using OpenAI.Responses;
 
 namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
 
@@ -27,38 +28,39 @@ internal class AIAgentResponsesProcessor
 #pragma warning disable IDE0052 // Remove unread private members
     private readonly ILogger _logger;
 #pragma warning restore IDE0052 // Remove unread private members
-    private readonly AgentProxy _agentProxy;
+    private readonly AIAgent _agent;
 
-    private ActorType AgentType => new(this._agentProxy.Name);
+    private string AgentName => this._agent.Name!;
 
-    public AIAgentResponsesProcessor(AgentProxy agentProxy, ILoggerFactory? loggerFactory = null)
+    public AIAgentResponsesProcessor(AIAgent agent, ILoggerFactory? loggerFactory = null)
     {
         this._logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<AIAgentResponsesProcessor>();
-        this._agentProxy = agentProxy ?? throw new ArgumentNullException(nameof(agentProxy));
+        this._agent = agent ?? throw new ArgumentNullException(nameof(agent));
     }
 
     public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
-        string conversationId = createResponse.Conversation?.ConversationId ?? $"conv_{Guid.NewGuid():N}";
-        var agentThread = (AgentProxyThread)this._agentProxy.GetNewThread(conversationId);
+        // No API exists to load the agentThread from threadId at the moment
+        _ = createResponse.Conversation?.ConversationId ?? $"conv_{Guid.NewGuid():N}";
+        AgentThread? agentThread = null!; // this._agent.GetNewThread(conversationId);
 
         var options = new OpenAIResponsesRunOptions();
         var chatMessages = createResponse.Input.ToChatMessages();
 
-        if (createResponse.Stream)
-        {
-            return new OpenAIStreamingResponsesResult(this._agentProxy, chatMessages, agentThread, options);
-        }
+        //if (createResponse.Stream)
+        //{
+        //    return new OpenAIStreamingResponsesResult(this._agent, chatMessages, agentThread, options);
+        //}
 
-        var agentResponse = await this._agentProxy.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
-        var openAIResponse = agentResponse.ToOpenAIResponse(this.AgentType, agentThread, options);
+        var agentResponse = await this._agent.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
+        var openAIResponse = agentResponse.ToOpenAIResponse(this.AgentName, agentThread, options);
         return Results.Ok(openAIResponse);
     }
 
     private class OpenAIStreamingResponsesResult(
-        AgentProxy agentProxy,
+        AIAgent agent,
         IEnumerable<ChatMessage> chatMessages,
-        AgentProxyThread thread,
+        AgentThread thread,
         OpenAIResponsesRunOptions options) : IResult
     {
         public Task ExecuteAsync(HttpContext httpContext)
@@ -86,26 +88,19 @@ internal class AIAgentResponsesProcessor
                 cancellationToken);
         }
 
-        private async IAsyncEnumerable<SseItem<StreamingResponse>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        private async IAsyncEnumerable<SseItem<StreamingResponseUpdate>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             string eventType;
             var sequenceNumber = 1;
-            var responseHandle = await agentProxy.RunCoreAsync(chatMessages, threadId: thread.ConversationId!, cancellationToken).ConfigureAwait(false);
+            AgentThread? agentThread = null!;
+
             var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
-
-            await foreach (var update in responseHandle.WatchUpdatesAsync(cancellationToken).WithCancellation(cancellationToken))
+            await foreach (var update in agent.RunStreamingAsync(chatMessages, thread: agentThread, cancellationToken: cancellationToken).ConfigureAwait(false))
             {
-                if (update.Status is RequestStatus.Failed)
-                {
-                    throw new InvalidOperationException($"The agent run request failed: {update.Data}");
-                }
-
-                var responseUpdate = (AgentRunResponseUpdate)update.Data.Deserialize(agentRunResponseUpdateTypeInfo)!;
-
                 if (sequenceNumber == 1)
                 {
                     var createdChunk = CreateChunk(StreamingResponseType.Created, out eventType);
-                    yield return new SseItem<StreamingResponse>(createdChunk, eventType);
+                    yield return new SseItem<StreamingResponseInProgressUpdate>(createdChunk, eventType);
                 }
 
                 if (update.Status is RequestStatus.Completed)
