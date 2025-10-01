@@ -30,7 +30,7 @@ async def handle_approvals_without_thread(query: str, agent: "AgentProtocol"):
                 f" with arguments: {user_input_needed.function_call.arguments}"
             )
             new_inputs.append(ChatMessage(role="assistant", contents=[user_input_needed]))
-            user_approval = input("Approve function call? (y/n): ")
+            user_approval = await asyncio.to_thread(input, "Approve function call? (y/n): ")
             new_inputs.append(
                 ChatMessage(role="user", contents=[user_input_needed.create_response(user_approval.lower() == "y")])
             )
@@ -51,7 +51,7 @@ async def handle_approvals_with_thread(query: str, agent: "AgentProtocol", threa
                 f"User Input Request for function from {agent.name}: {user_input_needed.function_call.name}"
                 f" with arguments: {user_input_needed.function_call.arguments}"
             )
-            user_approval = input("Approve function call? (y/n): ")
+            user_approval = await asyncio.to_thread(input, "Approve function call? (y/n): ")
             new_input.append(
                 ChatMessage(
                     role="user",
@@ -78,7 +78,7 @@ async def handle_approvals_with_thread_streaming(query: str, agent: "AgentProtoc
                         f"User Input Request for function from {agent.name}: {user_input_needed.function_call.name}"
                         f" with arguments: {user_input_needed.function_call.arguments}"
                     )
-                    user_approval = input("Approve function call? (y/n): ")
+                    user_approval = await asyncio.to_thread(input, "Approve function call? (y/n): ")
                     new_input.append(
                         ChatMessage(
                             role="user", contents=[user_input_needed.create_response(user_approval.lower() == "y")]
