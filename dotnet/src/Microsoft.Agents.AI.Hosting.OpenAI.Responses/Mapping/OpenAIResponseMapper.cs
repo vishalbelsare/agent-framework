@@ -68,38 +68,4 @@ internal static class OpenAIResponseMapper
             Output = output
         };
     }
-
-    public static Response ToOpenAIResponse(
-#pragma warning disable RCS1175 // Unused 'this' parameter
-        this ActorResponseHandle responseHandle,
-#pragma warning restore RCS1175 // Unused 'this' parameter
-        AgentRunResponseUpdate update,
-        AgentProxyThread thread,
-        OpenAIResponsesRunOptions options)
-    {
-        var conversation = thread.ConversationId is not null ? new Conversation { Id = thread.ConversationId } : null;
-
-        // for simplicity only works with text content
-        var output = new MessageOutput
-        {
-            Id = "todo",
-            Status = "completed",
-            Content = update.Contents.OfType<TextContent>().Select(textContent => new MessageContent
-            {
-                Type = "output_text",
-                Text = textContent.Text
-            }).ToList()
-        };
-
-        var responseId = update.ResponseId ?? $"resp_{Guid.NewGuid():N}";
-
-        return new()
-        {
-            Id = responseId,
-            Background = options.Background,
-            Conversation = conversation,
-            CreatedAt = update.CreatedAt is not null ? update.CreatedAt.Value.ToUnixTimeSeconds() : DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Output = [output]
-        };
-    }
 }

@@ -3,7 +3,6 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -40,12 +39,9 @@ internal class AIAgentResponsesProcessor
 
     public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
     {
-        // No API exists to load the agentThread from threadId at the moment
-        _ = createResponse.Conversation?.ConversationId ?? $"conv_{Guid.NewGuid():N}";
-        AgentThread? agentThread = null!; // this._agent.GetNewThread(conversationId);
-
         var options = new OpenAIResponsesRunOptions();
         var chatMessages = createResponse.Input.ToChatMessages();
+        AgentThread? agentThread = null!; // not supported to resolve from conversationId
 
         //if (createResponse.Stream)
         //{
@@ -93,35 +89,14 @@ internal class AIAgentResponsesProcessor
             string eventType;
             var sequenceNumber = 1;
             AgentThread? agentThread = null!;
-
             var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
+
             await foreach (var update in agent.RunStreamingAsync(chatMessages, thread: agentThread, cancellationToken: cancellationToken).ConfigureAwait(false))
             {
-                if (sequenceNumber == 1)
+                foreach (var content in update.Contents)
                 {
-                    var createdChunk = CreateChunk(StreamingResponseType.Created, out eventType);
-                    yield return new SseItem<StreamingResponseInProgressUpdate>(createdChunk, eventType);
-                }
-
-                if (update.Status is RequestStatus.Completed)
-                {
-                    var completedChunk = CreateChunk(StreamingResponseType.Completed, out eventType);
-                    yield return new SseItem<StreamingResponse>(completedChunk, eventType);
-                    break;
-                }
-
-                var inProgressChunk = CreateChunk(StreamingResponseType.InProgress, out eventType);
-                yield return new SseItem<StreamingResponse>(inProgressChunk, eventType);
-
-                StreamingResponse CreateChunk(StreamingResponseType type, out string eventType)
-                {
-                    eventType = type.ToEventName();
-                    return new()
-                    {
-                        Type = type,
-                        SequenceNumber = sequenceNumber++,
-                        Response = responseHandle.ToOpenAIResponse(responseUpdate, thread, options)
-                    };
+                    Console.WriteLine(content);
+                    yield return new SseItem<StreamingResponseUpdate>(null!);
                 }
             }
         }
