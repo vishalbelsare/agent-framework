@@ -1,15 +1,18 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
+using System.ClientModel.Primitives;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.Agents.AI.Hosting.Responses.Internal;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenAI.Responses;
 
 namespace Microsoft.Agents.AI.Hosting.Responses;
 
@@ -54,45 +57,22 @@ public static class EndpointRouteBuilderExtensions
         var agentName = agent.Name;
         var responsesProcessor = new AIAgentResponsesProcessor(agent, loggerFactory);
 
-        routeGroup.MapPost("/", (CreateResponse createResponse, CancellationToken cancellationToken)
-            => responsesProcessor.CreateModelResponseAsync(createResponse, cancellationToken)
-        ).WithName(agentName + "/CreateResponse");
+        routeGroup.MapPost("/", async (HttpContext requestContext, CancellationToken cancellationToken) =>
+        {
+            var requestBinary = await BinaryData.FromStreamAsync(requestContext.Request.Body, cancellationToken).ConfigureAwait(false);
 
-        // Endpoints below are related to the response management.
-        // Currently, there is no way to persistently track the actual response
-        // (we can do on conversation / message level).
-        // --
-        // will be added after actor model rework.
+            var responseOptions = new ResponseCreationOptions();
+            var responseOptionsJsonModel = responseOptions as IJsonModel<ResponseCreationOptions>;
+            Debug.Assert(responseOptionsJsonModel is not null);
 
-        //routeGroup.MapGet("/{responseId}", (string responseId,
-        //    CancellationToken cancellationToken,
-        //    [FromQuery(Name = "include_obfuscation")] string? includeObfuscation,
-        //    [FromQuery(Name = "starting_after")] string? startingAfter,
-        //    [FromQuery(Name = "stream")] bool stream = false)
-        //    => agentResponsesProcessor.GetModelResponseAsync(responseId, includeObfuscation, startingAfter, stream, cancellationToken).ConfigureAwait(false)
-        //).WithName(agentName + "/GetModelResponse");
+            responseOptions = responseOptionsJsonModel.Create(requestBinary, ModelReaderWriterOptions.Json);
+            if (responseOptions is null)
+            {
+                return Results.BadRequest("Invalid request payload.");
+            }
 
-        //routeGroup.MapDelete("/{responseId}", async (string responseId, CancellationToken cancellationToken) =>
-        //{
-        //    var deleted = await agentResponsesProcessor.DeleteModelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-        //    return Results.Ok(new DeleteModelResponse(deleted));
-        //}).WithName(agentName + "/DeleteResponse");
-
-        //routeGroup.MapPost("/{responseId}/cancel", async (string responseId, CancellationToken cancellationToken) =>
-        //{
-        //    var response = await agentResponsesProcessor.CancelResponseAsync(responseId, cancellationToken).ConfigureAwait(false);
-        //    return Results.Ok(response);
-        //}).WithName(agentName + "/CancelResponse");
-
-        //routeGroup.MapGet("/{responseId}/input-items", (string responseId,
-        //    CancellationToken cancellationToken,
-        //    [FromQuery(Name = "after")] string? after,
-        //    [FromQuery(Name = "include")] IncludeParameter[]? include,
-        //    [FromQuery(Name = "limit")] int? limit = 20,
-        //    [FromQuery(Name = "order")] string? order = "desc") =>
-        //        agentResponsesProcessor.ListInputItemsAsync(responseId, after, include, limit, order, cancellationToken)
-        //    )
-        //    .WithName(agentName + "/ListInputItems");
+            return await responsesProcessor.CreateModelResponseAsync(responseOptions, cancellationToken).ConfigureAwait(false);
+        }).WithName(agentName + "/CreateResponse");
     }
 
     private static void MapConversations(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)

@@ -11,11 +11,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Agents.AI.Extensions;
-using Microsoft.Agents.AI.Hosting.Responses.Mapping;
+using Microsoft.Agents.AI.Hosting.Responses.Model;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.AI.Agents.Hosting.Responses.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI.Responses;
@@ -38,13 +37,15 @@ internal class AIAgentResponsesProcessor
         this._agent = agent ?? throw new ArgumentNullException(nameof(agent));
     }
 
-    public async Task<IResult> CreateModelResponseAsync(CreateResponse createResponse, CancellationToken cancellationToken)
+    public async Task<IResult> CreateModelResponseAsync(ResponseCreationOptions responseCreationOptions, CancellationToken cancellationToken)
     {
         var options = new OpenAIResponsesRunOptions();
-        var chatMessages = createResponse.Input.ToChatMessages();
         AgentThread? agentThread = null!; // not supported to resolve from conversationId
 
-        if (createResponse.Stream)
+        var inputItems = responseCreationOptions.GetInput();
+        var chatMessages = inputItems.AsChatMessages();
+
+        if (responseCreationOptions.GetStream())
         {
             return new OpenAIStreamingResponsesResult(this._agent, chatMessages, agentThread, options);
         }
@@ -94,7 +95,7 @@ internal class AIAgentResponsesProcessor
             response.Headers.ContentEncoding = "identity";
             httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
 
-            var streamingResponseEventTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(typeof(StreamingResponse));
+            var streamingResponseEventTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(typeof(StreamingResponseUpdate));
 
             return SseFormatter.WriteAsync(
                 source: this.GetStreamingResponsesAsync(cancellationToken),
