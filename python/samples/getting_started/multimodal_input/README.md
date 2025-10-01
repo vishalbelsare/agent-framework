@@ -31,6 +31,16 @@ Optionally for Azure OpenAI:
 - `AZURE_OPENAI_API_VERSION`: The API version to use (default is `2024-10-21`)
 - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (if not using `AzureCliCredential`)
 
+**Note:** You can also provide configuration directly in code instead of using environment variables:
+```python
+# Example: Pass deployment_name directly
+client = AzureOpenAIChatClient(
+    credential=AzureCliCredential(),
+    deployment_name="your-deployment-name",
+    endpoint="https://your-resource.openai.azure.com"
+)
+```
+
 ## Authentication
 
 The Azure example uses `AzureCliCredential` for authentication. Run `az login` in your terminal before running the example, or replace `AzureCliCredential` with your preferred authentication method (e.g., provide `api_key` parameter).
