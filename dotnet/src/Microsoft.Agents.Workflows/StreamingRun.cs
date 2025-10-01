@@ -86,12 +86,15 @@ public sealed class StreamingRun
         do
         {
             await foreach (WorkflowEvent @event in this._runHandle.TakeEventStreamAsync(breakOnHalt: true, cancellation)
-                                                                  .WithCancellation(cancellation)
                                                                   .ConfigureAwait(false))
             {
-                Console.WriteLine($"Emitted Event: {@event.GetType().Name}");
-                Console.WriteLine($"\t\t {@event}");
                 yield return @event;
+            }
+
+            // Check for cancellation before processing status
+            if (cancellation.IsCancellationRequested)
+            {
+                yield break;
             }
 
             runStatus = await this._runHandle.GetStatusAsync(cancellation).ConfigureAwait(false);
@@ -102,9 +105,18 @@ public sealed class StreamingRun
 
             if (blockOnPendingRequest && runStatus == RunStatus.PendingRequests)
             {
-                // Although we are only doing this while there are pending requests, any input allows us to continue
-                // running, so we should not wait until the input is specifically an ExternalResponse.
-                await this.WaitOnInputAsync(cancellation).ConfigureAwait(false);
+                // In LegacyStreaming mode, we need to explicitly wait for coordination
+                // In Normal mode, the run loop automatically waits via channel signaling
+                if (InProcessExecution.DefaultMode == ExecutionMode.LegacyStreaming)
+                {
+                    await this.WaitOnInputAsync(cancellation).ConfigureAwait(false);
+                }
+                else
+                {
+                    // In Normal mode, just break - consumer will call SendResponseAsync which signals run loop
+                    // Unless cancellation was requested, in which case preserve that by breaking via cancellation check above
+                    yield break;
+                }
             }
         } while (runStatus == RunStatus.Running);
     }

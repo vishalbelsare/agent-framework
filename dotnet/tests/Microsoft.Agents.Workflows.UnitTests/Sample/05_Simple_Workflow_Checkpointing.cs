@@ -106,17 +106,17 @@ internal static class Step5EntryPoint
                         if (maxStep.HasValue && stepCompletedEvt.StepNumber >= maxStep.Value - 1)
                         {
                             cancellationSource.Cancel();
+                            return null;
                         }
-                        else
-                        {
-                            foreach (ExternalRequest request in requests)
-                            {
-                                ExternalResponse response = ExecuteExternalRequest(request, userGuessCallback, prompt);
-                                await handle.SendResponseAsync(response).ConfigureAwait(false);
-                            }
 
-                            requests.Clear();
+                        foreach (ExternalRequest request in requests)
+                        {
+                            ExternalResponse response = ExecuteExternalRequest(request, userGuessCallback, prompt);
+                            await handle.SendResponseAsync(response).ConfigureAwait(false);
                         }
+
+                        requests.Clear();
+
                         break;
 
                     case ExecutorCompletedEvent executorCompleteEvt:

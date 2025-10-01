@@ -13,11 +13,11 @@ namespace Microsoft.Agents.Workflows.Execution;
 
 internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, IInputCoordinator
 {
-    private readonly AsyncCoordinator _waitForResponseCoordinator = new();
     private readonly ISuperStepRunner _stepRunner;
     private readonly ICheckpointingHandle _checkpointingHandle;
 
     private readonly IRunEventStream _eventStream;
+    private readonly AsyncCoordinator? _legacyCoordinator; // Only used for LegacyStreaming mode
     private readonly CancellationTokenSource _endRunSource = new();
     private int _isDisposed;
     private int _isEventStreamTaken;
@@ -29,17 +29,46 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
 
         this._eventStream = mode switch
         {
-            ExecutionMode.Normal => new OffThreadRunEventStream(stepRunner, this),
+            ExecutionMode.Normal => new StreamingRunEventStream(stepRunner, this),
             ExecutionMode.Lockstep => new LockstepRunEventStream(stepRunner),
+            ExecutionMode.LegacyStreaming => CreateLegacyStreaming(stepRunner, this, out this._legacyCoordinator),
             _ => throw new ArgumentOutOfRangeException(nameof(mode), $"Unknown execution mode {mode}")
         };
         this._eventStream.Start();
+
+        // If there are already unprocessed messages (e.g., from a checkpoint restore that happened
+        // before this handle was created), signal the run loop to start processing them
+        if (stepRunner.HasUnprocessedMessages)
+        {
+            this.SignalInputToRunLoop();
+        }
+
+        static IRunEventStream CreateLegacyStreaming(
+            ISuperStepRunner stepRunner,
+            IInputCoordinator inputCoordinator,
+            out AsyncCoordinator coordinator)
+        {
+            coordinator = new AsyncCoordinator();
+            return new OffThreadRunEventStream(stepRunner, inputCoordinator);
+        }
     }
 
     public ValueTask WaitForNextInputAsync(CancellationToken cancellation = default)
-        => this._waitForResponseCoordinator.WaitForCoordinationAsync(cancellation);
+    {
+        // This is only used by OffThreadRunEventStream (LegacyStreaming mode)
+        if (this._legacyCoordinator is not null)
+        {
+            return this._legacyCoordinator.WaitForCoordinationAsync(cancellation);
+        }
 
-    public void ReleaseResponseWaiter() => this._waitForResponseCoordinator.MarkCoordinationPoint();
+        throw new NotSupportedException("This method is only supported in LegacyStreaming mode.");
+    }
+
+    public void ReleaseResponseWaiter()
+    {
+        // This is only used by OffThreadRunEventStream (LegacyStreaming mode)
+        this._legacyCoordinator?.MarkCoordinationPoint();
+    }
 
     public string RunId => this._stepRunner.RunId;
 
@@ -50,26 +79,35 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
 
     public async IAsyncEnumerable<WorkflowEvent> TakeEventStreamAsync(bool breakOnHalt, [EnumeratorCancellation] CancellationToken cancellation = default)
     {
-        // Create a linked cancellation token that combines the provided token with the end-run token
-        using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellation, this._endRunSource.Token);
-
-        // Only one enumerator of this is allowed at a time
+        // Enforce single active enumerator (this runs when enumeration begins)
         if (Interlocked.CompareExchange(ref this._isEventStreamTaken, 1, 0) != 0)
         {
             throw new InvalidOperationException("The event stream has already been taken. Only one enumerator is allowed at a time.");
         }
 
+        CancellationTokenSource? linked = null;
         try
         {
-            await foreach (WorkflowEvent @event in this._eventStream.TakeEventStreamAsync(linkedSource.Token)
-                                                                    .ConfigureAwait(false))
+            linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, this._endRunSource.Token);
+            var token = linked.Token;
+
+            // Build the inner stream before the loop so synchronous exceptions still release the gate
+            var inner = this._eventStream.TakeEventStreamAsync(token);
+
+            await foreach (var ev in inner.WithCancellation(token).ConfigureAwait(false))
             {
-                yield return @event;
+                yield return ev;
+
+                if (breakOnHalt && ev is RequestHaltEvent)
+                {
+                    yield break; // or break the loop according to your semantics
+                }
             }
         }
         finally
         {
-            Volatile.Write(ref this._isEventStreamTaken, 0);
+            linked?.Dispose();
+            Interlocked.Exchange(ref this._isEventStreamTaken, 0);
         }
     }
 
@@ -80,7 +118,7 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
     {
         if (message is ExternalResponse response)
         {
-            // EnqueueResponseAsync marks the coordination point itself
+            // EnqueueResponseAsync handles signaling
             await this.EnqueueResponseAsync(response, cancellation)
                       .ConfigureAwait(false);
 
@@ -90,7 +128,8 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
         bool result = await this._stepRunner.EnqueueMessageAsync(message, cancellation)
                                             .ConfigureAwait(false);
 
-        this._waitForResponseCoordinator.MarkCoordinationPoint();
+        // Signal the run loop that new input is available
+        this.SignalInputToRunLoop();
 
         return result;
     }
@@ -104,7 +143,7 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
 
         if (declaredType != null && typeof(ExternalRequest).IsAssignableFrom(declaredType))
         {
-            // EnqueueResponseAsync marks the coordination point itself
+            // EnqueueResponseAsync handles signaling
             await this.EnqueueResponseAsync((ExternalResponse)message, cancellation)
                       .ConfigureAwait(false);
 
@@ -112,7 +151,7 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
         }
         else if (declaredType == null && message is ExternalResponse response)
         {
-            // EnqueueResponseAsync marks the coordination point itself
+            // EnqueueResponseAsync handles signaling
             await this.EnqueueResponseAsync(response, cancellation)
                       .ConfigureAwait(false);
 
@@ -122,7 +161,8 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
         bool result = await this._stepRunner.EnqueueMessageUntypedAsync(message, declaredType ?? message.GetType(), cancellation)
                                             .ConfigureAwait(false);
 
-        this._waitForResponseCoordinator.MarkCoordinationPoint();
+        // Signal the run loop that new input is available
+        this.SignalInputToRunLoop();
 
         return result;
     }
@@ -131,7 +171,24 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
     {
         await this._stepRunner.EnqueueResponseAsync(response, cancellation).ConfigureAwait(false);
 
-        this._waitForResponseCoordinator.MarkCoordinationPoint();
+        // Signal the run loop that new input is available
+        this.SignalInputToRunLoop();
+    }
+
+    private void SignalInputToRunLoop()
+    {
+        // Signal the appropriate coordinator based on which implementation is in use
+        if (this._eventStream is StreamingRunEventStream streaming)
+        {
+            // New channel-based implementation
+            streaming.SignalInput();
+        }
+        else if (this._legacyCoordinator is not null)
+        {
+            // Legacy OffThreadRunEventStream implementation
+            this._legacyCoordinator.MarkCoordinationPoint();
+        }
+        // Lockstep mode doesn't need signaling
     }
 
     public ValueTask RequestEndRunAsync()
@@ -152,6 +209,22 @@ internal sealed class AsyncRunHandle : ICheckpointingHandle, IAsyncDisposable, I
         }
     }
 
-    public ValueTask RestoreCheckpointAsync(CheckpointInfo checkpointInfo, CancellationToken cancellation = default)
-        => this._checkpointingHandle.RestoreCheckpointAsync(checkpointInfo, cancellation);
+    public async ValueTask RestoreCheckpointAsync(CheckpointInfo checkpointInfo, CancellationToken cancellation = default)
+    {
+        // Clear buffered events from the channel BEFORE restoring to discard stale events from supersteps
+        // that occurred after the checkpoint we're restoring to
+        // This must happen BEFORE the restore so that events republished during restore aren't cleared
+        if (this._eventStream is StreamingRunEventStream streamingEventStream)
+        {
+            streamingEventStream.ClearBufferedEvents();
+        }
+
+        // Restore the workflow state - this will republish unserviced requests as new events
+        await this._checkpointingHandle.RestoreCheckpointAsync(checkpointInfo, cancellation).ConfigureAwait(false);
+
+        // After restore, signal the run loop to process any restored messages
+        // This is necessary because ClearBufferedEvents() doesn't signal, and the restored
+        // queued messages won't automatically wake up the run loop
+        this.SignalInputToRunLoop();
+    }
 }

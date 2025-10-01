@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build)",
+      "Bash(dotnet run:*)",
+      "Bash(timeout:*)",
+      "Bash(dir \"C:\\src\\agent-framework\\dotnet\\samples\\GettingStarted\\Workflow\\Visualization\\Resources\")",
+      "Bash(dir \"C:\\src\\agent-framework\\dotnet\\samples\\GettingStarted\\Workflow\")",
+      "Bash(dir \"C:\\src\\agent-framework\\dotnet\\samples\\GettingStarted\\Workflows\\Visualization\")",
+      "Bash(dir:*)",
+      "Bash(dotnet build:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(dotnet test:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
