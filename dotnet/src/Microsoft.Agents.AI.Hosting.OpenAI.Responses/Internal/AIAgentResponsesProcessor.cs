@@ -2,12 +2,15 @@
 
 using System;
 using System.Buffers;
+using System.ClientModel.Primitives;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Agents.AI.Extensions;
 using Microsoft.Agents.AI.Hosting.Responses.Mapping;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -29,8 +32,6 @@ internal class AIAgentResponsesProcessor
 #pragma warning restore IDE0052 // Remove unread private members
     private readonly AIAgent _agent;
 
-    private string AgentName => this._agent.Name!;
-
     public AIAgentResponsesProcessor(AIAgent agent, ILoggerFactory? loggerFactory = null)
     {
         this._logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<AIAgentResponsesProcessor>();
@@ -43,14 +44,36 @@ internal class AIAgentResponsesProcessor
         var chatMessages = createResponse.Input.ToChatMessages();
         AgentThread? agentThread = null!; // not supported to resolve from conversationId
 
-        //if (createResponse.Stream)
-        //{
-        //    return new OpenAIStreamingResponsesResult(this._agent, chatMessages, agentThread, options);
-        //}
+        if (createResponse.Stream)
+        {
+            return new OpenAIStreamingResponsesResult(this._agent, chatMessages, agentThread, options);
+        }
 
         var agentResponse = await this._agent.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
-        var openAIResponse = agentResponse.ToOpenAIResponse(this.AgentName, agentThread, options);
-        return Results.Ok(openAIResponse);
+        return new OpenAIResponseResult(agentResponse);
+    }
+
+    private class OpenAIResponseResult(AgentRunResponse agentResponse) : IResult
+    {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "Otherwise reports on await using var writer.")]
+        public async Task ExecuteAsync(HttpContext httpContext)
+        {
+            // note: OpenAI SDK types provide their own serialization implementation
+            // so we cant simply return IResult wrap for the typed-object.
+            // instead writing to the response body can be done.
+
+            var cancellationToken = httpContext.RequestAborted;
+            var response = httpContext.Response;
+
+            var chatResponse = agentResponse.AsChatResponse();
+            var openAIResponse = chatResponse.AsOpenAIResponse();
+            var openAIResponseJsonModel = openAIResponse as IJsonModel<OpenAIResponse>;
+            Debug.Assert(openAIResponseJsonModel is not null);
+
+            await using var writer = new Utf8JsonWriter(response.BodyWriter, new JsonWriterOptions { SkipValidation = false });
+            openAIResponseJsonModel.Write(writer, ModelReaderWriterOptions.Json);
+            await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private class OpenAIStreamingResponsesResult(

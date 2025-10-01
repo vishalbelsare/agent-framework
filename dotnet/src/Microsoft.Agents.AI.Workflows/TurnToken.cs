@@ -4,7 +4,7 @@ namespace Microsoft.Agents.AI.Workflows;
 
 /// <summary>
 /// Sent to an <see cref="AIAgent"/>-based executor to request
-/// a response to accumulated <see cref="Extensions.AI.ChatMessage"/>.
+/// a response to accumulated <see cref="Microsoft.Extensions.AI.ChatMessage"/>.
 /// </summary>
 /// <param name="emitEvents">Whether to raise AgentRunEvents for this executor.</param>
 public class TurnToken(bool? emitEvents = null)
