@@ -37,10 +37,6 @@
   </ItemGroup>
 
   <ItemGroup>
-	<InternalsVisibleTo Include="Microsoft.Agents.AI.Hosting.OpenAI.Responses" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="Microsoft.Agents.AI.Hosting.UnitTests" />
   </ItemGroup>
 

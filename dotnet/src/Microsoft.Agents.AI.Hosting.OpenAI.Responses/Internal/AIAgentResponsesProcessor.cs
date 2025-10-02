@@ -49,7 +49,7 @@ internal class AIAgentResponsesProcessor
 
         if (responseCreationOptions.GetStream())
         {
-            return new OpenAIStreamingResponsesResult(this._agent, chatMessages, agentThread, options);
+            return new OpenAIStreamingResponsesResult(this._agent, chatMessages);
         }
 
         var agentResponse = await this._agent.RunAsync(chatMessages, agentThread, options, cancellationToken).ConfigureAwait(false);
@@ -81,10 +81,10 @@ internal class AIAgentResponsesProcessor
 
     private class OpenAIStreamingResponsesResult(
         AIAgent agent,
-        IEnumerable<ChatMessage> chatMessages,
-        AgentThread thread,
-        OpenAIResponsesRunOptions options) : IResult
+        IEnumerable<ChatMessage> chatMessages) : IResult
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
         public Task ExecuteAsync(HttpContext httpContext)
         {
             var cancellationToken = httpContext.RequestAborted;
@@ -110,12 +110,10 @@ internal class AIAgentResponsesProcessor
 
         private async IAsyncEnumerable<SseItem<StreamingResponseEventBase>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            string eventType;
             var sequenceNumber = 1;
             var outputIndex = 1;
             AgentThread? agentThread = null!;
 
-            string? lastMessageId = null;
             ResponseItem? lastResponseItem = null;
             OpenAIResponse? lastOpenAIResponse = null;
 
