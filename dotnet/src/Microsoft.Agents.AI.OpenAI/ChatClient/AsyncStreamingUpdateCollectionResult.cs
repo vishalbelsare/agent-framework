@@ -3,7 +3,7 @@
 using System.ClientModel;
 using OpenAI.Chat;
 
-namespace Microsoft.Agents.AI.OpenAI.ChatClient;
+namespace Microsoft.Agents.AI.OpenAI;
 
 internal sealed class AsyncStreamingUpdateCollectionResult : AsyncCollectionResult<StreamingChatCompletionUpdate>
 {
@@ -16,16 +16,15 @@ internal sealed class AsyncStreamingUpdateCollectionResult : AsyncCollectionResu
 
     public override ContinuationToken? GetContinuationToken(ClientResult page) => null;
 
-    public override IAsyncEnumerable<ClientResult> GetRawPagesAsync() =>
-        AsyncEnumerable.Repeat(ClientResult.FromValue(this._updates, new StreamingUpdatePipelineResponse(this._updates)), 1);
+    public override async IAsyncEnumerable<ClientResult> GetRawPagesAsync()
+    {
+        yield return ClientResult.FromValue(this._updates, new StreamingUpdatePipelineResponse(this._updates));
+    }
 
-    protected override async IAsyncEnumerable<StreamingChatCompletionUpdate> GetValuesFromPageAsync(ClientResult page)
+    protected override IAsyncEnumerable<StreamingChatCompletionUpdate> GetValuesFromPageAsync(ClientResult page)
     {
         var updates = ((ClientResult<IAsyncEnumerable<AgentRunResponseUpdate>>)page).Value;
 
-        await foreach (var update in updates.ConfigureAwait(false))
-        {
-            yield return update.AsStreamingChatCompletionUpdate();
-        }
+        return updates.AsChatResponseUpdatesAsync().AsOpenAIStreamingChatCompletionUpdatesAsync();
     }
 }

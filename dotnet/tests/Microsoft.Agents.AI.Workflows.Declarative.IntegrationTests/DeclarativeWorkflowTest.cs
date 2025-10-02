@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,13 +20,13 @@ public sealed class DeclarativeWorkflowTest(ITestOutputHelper output) : Workflow
     [InlineData("InvokeAgent.yaml", "InvokeAgent.json")]
     [InlineData("ConversationMessages.yaml", "ConversationMessages.json")]
     public Task ValidateCaseAsync(string workflowFileName, string testcaseFileName) =>
-        this.RunWorkflowAsync(Path.Combine("Workflows", workflowFileName), testcaseFileName);
+        this.RunWorkflowAsync(Path.Combine(Environment.CurrentDirectory, "Workflows", workflowFileName), testcaseFileName);
 
     [Theory]
     [InlineData("Marketing.yaml", "Marketing.json")]
     [InlineData("MathChat.yaml", "MathChat.json")]
-    [InlineData("DeepResearch.yaml", "DeepResearch.json")]
-    [InlineData("HumanInLoop.yaml", "HumanInLoop.json", Skip = "TODO")]
+    [InlineData("DeepResearch.yaml", "DeepResearch.json", Skip = "Long running")]
+    [InlineData("HumanInLoop.yaml", "HumanInLoop.json", Skip = "Needs test support")]
     public Task ValidateScenarioAsync(string workflowFileName, string testcaseFileName) =>
         this.RunWorkflowAsync(Path.Combine(GetRepoFolder(), "workflow-samples", workflowFileName), testcaseFileName);
 

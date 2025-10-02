@@ -2,7 +2,9 @@
 
 namespace Microsoft.Agents.AI;
 
-/// <summary>Provides metadata about an <see cref="AgentThread"/>.</summary>
+/// <summary>
+/// Provides metadata information about an <see cref="AgentThread"/> instance.
+/// </summary>
 public class AgentThreadMetadata
 {
     /// <summary>
@@ -11,7 +13,7 @@ public class AgentThreadMetadata
     /// <param name="conversationId">The unique identifier for the conversation, if available.</param>
     public AgentThreadMetadata(string? conversationId)
     {
-        ConversationId = conversationId;
+        this.ConversationId = conversationId;
     }
 
     /// <summary>

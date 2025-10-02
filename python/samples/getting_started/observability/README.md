@@ -88,6 +88,17 @@ setup_observability(exporters=[exporter])
 
 > Using this method implicitly enables telemetry, so you do not need to set the `ENABLE_OTEL` environment variable. You can still set `ENABLE_SENSITIVE_DATA` to control whether sensitive data is included in the telemetry, or call the `setup_observability()` function with the `enable_sensitive_data` parameter set to `True`.
 
+#### Logging
+You can control at what level logging happens and thus what logs get exported, you can do this, by adding this:
+
+```python
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.NOTSET)
+```
+This gets the root logger and sets the level of that, automatically other loggers inherit from that one, and you will get detailed logs in your telemetry.
+
 ## Samples
 
 This folder contains different samples demonstrating how to use telemetry in various scenarios.
@@ -95,7 +106,7 @@ This folder contains different samples demonstrating how to use telemetry in var
 | Sample | Description |
 |--------|-------------|
 | [setup_observability_with_parameters.py](./setup_observability_with_parameters.py) | A simple example showing how to setup telemetry by passing in parameters to the `setup_observability()` function. |
-| [setup_observability_with_env_vars.py](./setup_observability_with_env_vars.py) | A simple example showing how to setup telemetry with the `setup_observability()` function using environment variables. |
+| [setup_observability_with_env_var.py](./setup_observability_with_env_var.py) | A simple example showing how to setup telemetry with the `setup_observability()` function using environment variables. |
 | [agent_observability.py](./agent_observability.py) | A simple example showing how to setup telemetry for an agentic application. |
 | [azure_ai_agent_observability.py](./azure_ai_agent_observability.py) | A simple example showing how to setup telemetry for an agentic application with an Azure AI project. |
 | [azure_ai_chat_client_with_observability.py](./azure_ai_chat_client_with_observability.py) | A simple example showing how to setup telemetry for a chat client with an Azure AI project. |
@@ -152,7 +163,7 @@ exporter = OTLPSpanExporter(endpoint="your-otlp-endpoint", compression=Compressi
 setup_observability(exporters=[exporter])
 ```
 
-## Logs
+### Logs
 
 When you are in Azure Monitor and want to have a overall view of the span, use this query in the logs section:
 
@@ -175,6 +186,17 @@ dependencies
 | project-keep timestamp, target, operation_Id, tool_call_duration, duration, gen_ai*
 | order by timestamp asc
 ```
+
+### Grafana dashboards with Application Insights data
+Besides the Application Insights native UI, you can also use Grafana to visualize the telemetry data in Application Insights. There are two tailored dashboards for you to get started quickly:
+
+#### Agent Overview dashboard
+Grafana Dashboard Gallery link: <https://aka.ms/amg/dash/af-agent>
+![Agent Overview dashboard](https://github.com/Azure/azure-managed-grafana/raw/main/samples/assets/grafana-af-agent.gif)
+
+#### Workflow Overview dashboard
+Grafana Dashboard Gallery link: <https://aka.ms/amg/dash/af-workflow>
+![Workflow Overview dashboard](https://github.com/Azure/azure-managed-grafana/raw/main/samples/assets/grafana-af-workflow.gif)
 
 ## Aspire Dashboard
 
@@ -222,4 +244,4 @@ Once your sample finishes running, navigate to <http://localhost:18888> in a web
 
 You won't have to deploy an Application Insights resource or install Docker to run Aspire Dashboard if you choose to inspect telemetry data in a console. However, it is difficult to navigate through all the spans and logs produced, so **this method is only recommended when you are just getting started**.
 
-Use the guides from OpenTelemetry to setup exporters for [the console](https://opentelemetry.io/docs/languages/python/getting-started/), or use [manual_setup_console_output](./manual_setup_console_output.py) as a reference, just know that there are a lot of options you can setup and this is not a comprehensive example.
+Use the guides from OpenTelemetry to setup exporters for [the console](https://opentelemetry.io/docs/languages/python/getting-started/), or use [advanced_manual_setup_console_output](./advanced_manual_setup_console_output.py) as a reference, just know that there are a lot of options you can setup and this is not a comprehensive example.
