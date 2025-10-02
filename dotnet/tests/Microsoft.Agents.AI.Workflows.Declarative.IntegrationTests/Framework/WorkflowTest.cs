@@ -120,15 +120,15 @@ public abstract class WorkflowTest(ITestOutputHelper output) : IntegrationTest(o
 
     protected static class AssertWorkflow
     {
-        public static void Conversation(string? conversationId, IReadOnlyList<ConversationUpdateEvent> conversationEvents)
+        public static void Conversation(string? conversationId, int expectedCount, IReadOnlyList<ConversationUpdateEvent> conversationEvents)
         {
-            if (conversationId is null)
+            if (string.IsNullOrEmpty(conversationId))
             {
-                Assert.NotEmpty(conversationEvents);
+                Assert.Equal(expectedCount, conversationEvents.Count);
             }
             else
             {
-                Assert.Empty(conversationEvents);
+                Assert.Equal(expectedCount - 1, conversationEvents.Count);
             }
         }
 
