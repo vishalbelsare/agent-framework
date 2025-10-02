@@ -5,7 +5,6 @@ import os
 from random import randint
 from typing import Annotated
 
-import dotenv
 from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
 from azure.ai.projects.aio import AIProjectClient
@@ -18,9 +17,6 @@ Azure AI Agent with Existing Agent Example
 This sample demonstrates working with pre-existing Azure AI Agents by providing
 agent IDs, showing agent reuse patterns for production scenarios.
 """
-
-# For loading environment variables from .env file
-dotenv.load_dotenv()
 
 
 def get_weather(

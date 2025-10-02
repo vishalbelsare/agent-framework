@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any
 
-import dotenv
 from agent_framework import (
     AgentProtocol,
     AgentThread,
@@ -34,9 +33,6 @@ To set up Bing Grounding:
 4. Copy the connection ID and set it as the BING_CONNECTION_ID environment variable
 """
 
-# For loading environment variables from .env file
-dotenv.load_dotenv()
-
 
 def get_time() -> str:
     """Get the current UTC time."""
@@ -56,7 +52,7 @@ async def handle_approvals_with_thread(query: str, agent: "AgentProtocol", threa
                 f"User Input Request for function from {agent.name}: {user_input_needed.function_call.name}"
                 f" with arguments: {user_input_needed.function_call.arguments}"
             )
-            user_approval = await asyncio.to_thread(input, "Approve function call? (y/n): ")
+            user_approval = input("Approve function call? (y/n): ")
             new_input.append(
                 ChatMessage(
                     role="user",

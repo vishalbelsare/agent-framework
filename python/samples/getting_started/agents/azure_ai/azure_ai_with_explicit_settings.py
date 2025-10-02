@@ -5,7 +5,6 @@ import os
 from random import randint
 from typing import Annotated
 
-import dotenv
 from agent_framework import ChatAgent
 from agent_framework.azure import AzureAIAgentClient
 from azure.identity.aio import AzureCliCredential
@@ -17,9 +16,6 @@ Azure AI Agent with Explicit Settings Example
 This sample demonstrates creating Azure AI Agents with explicit configuration
 settings rather than relying on environment variable defaults.
 """
-
-# For loading environment variables from .env file
-dotenv.load_dotenv()
 
 
 def get_weather(
