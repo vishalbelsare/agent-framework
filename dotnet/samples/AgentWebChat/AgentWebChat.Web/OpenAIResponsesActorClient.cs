@@ -48,6 +48,12 @@ internal sealed class OpenAIResponsesActorClient : IAgentClient
 
         await foreach (var update in chatClient.GetStreamingResponseAsync(messages, chatOptions, cancellationToken: cancellationToken))
         {
+            // Depending on what type is returned by server MEAI will convert it differently, and since OpenAI SDK
+            // has really "closed" most of types definitions
+            // (i.e. https://github.com/openai/openai-dotnet/blob/84286cd916adc7b03e50cc8031b587714af016ed/src/Generated/Models/Responses/InternalResponsesAssistantMessage.cs#L12)
+            // it may appear that sample frontend will not be able to interpret some of the output.
+            // Should be fixed in later versions of OpenAI SDK.
+
             yield return new AgentRunResponseUpdate(update);
         }
     }
