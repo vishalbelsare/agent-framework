@@ -47,9 +47,11 @@ public static class EndpointRouteBuilderExtensions
         var responsesRouteGroup = endpoints.MapGroup(responsesPath);
         MapResponses(responsesRouteGroup, agent, loggerFactory);
 
-        conversationsPath ??= $"/{agentName}/v1/conversations";
-        var conversationsRouteGroup = endpoints.MapGroup(conversationsPath);
-        MapConversations(conversationsRouteGroup, agent, loggerFactory);
+        // Will be included once we obtain the API to operate with thread (conversation).
+
+        // conversationsPath ??= $"/{agentName}/v1/conversations";
+        // var conversationsRouteGroup = endpoints.MapGroup(conversationsPath);
+        // MapConversations(conversationsRouteGroup, agent, loggerFactory);
     }
 
     private static void MapResponses(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
@@ -75,7 +77,9 @@ public static class EndpointRouteBuilderExtensions
         }).WithName(agentName + "/CreateResponse");
     }
 
+#pragma warning disable IDE0051 // Remove unused private members
     private static void MapConversations(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
+#pragma warning restore IDE0051 // Remove unused private members
     {
         var agentName = agent.Name;
         var conversationsProcessor = new AIAgentConversationsProcessor(agent, loggerFactory);

@@ -9,7 +9,7 @@ using OpenAI.Responses;
 
 namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
 
-internal class OpenAIResponseJsonConverter : JsonConverter<OpenAIResponse>
+internal sealed class OpenAIResponseJsonConverter : JsonConverter<OpenAIResponse>
 {
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "relying specifically on IJsonModel for json conversion")]
     public override OpenAIResponse? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

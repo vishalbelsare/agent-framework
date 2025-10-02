@@ -9,7 +9,7 @@ using OpenAI.Responses;
 
 namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
 
-internal class ResponseItemJsonConverter : JsonConverter<ResponseItem?>
+internal sealed class ResponseItemJsonConverter : JsonConverter<ResponseItem?>
 {
     public override ResponseItem? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

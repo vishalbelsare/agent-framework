@@ -35,12 +35,11 @@ internal static partial class OpenAIResponsesJsonUtilities
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access", Justification = "Converter is guarded by IsReflectionEnabledByDefault check.")]
     private static JsonSerializerOptions CreateDefaultOptions()
     {
-        JsonSerializerOptions options = new(AgentHostingJsonUtilities.DefaultOptions);
+        JsonSerializerOptions options = new();
 
         options.Converters.Add(new ResponseItemJsonConverter());
         options.Converters.Add(new OpenAIResponseJsonConverter());
 
-        options.MakeReadOnly();
         return options;
     }
 }

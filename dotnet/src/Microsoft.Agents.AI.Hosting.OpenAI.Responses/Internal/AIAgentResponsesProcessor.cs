@@ -26,7 +26,7 @@ namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
 /// <summary>
 /// OpenAI Responses processor associated with a specific <see cref="AIAgent"/>.
 /// </summary>
-internal class AIAgentResponsesProcessor
+internal sealed class AIAgentResponsesProcessor
 {
 #pragma warning disable IDE0052 // Remove unread private members
     private readonly ILogger _logger;
@@ -56,7 +56,7 @@ internal class AIAgentResponsesProcessor
         return new OpenAIResponseResult(agentResponse);
     }
 
-    private class OpenAIResponseResult(AgentRunResponse agentResponse) : IResult
+    private sealed class OpenAIResponseResult(AgentRunResponse agentResponse) : IResult
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "Otherwise reports on await using var writer.")]
         public async Task ExecuteAsync(HttpContext httpContext)
@@ -79,9 +79,7 @@ internal class AIAgentResponsesProcessor
         }
     }
 
-    private class OpenAIStreamingResponsesResult(
-        AIAgent agent,
-        IEnumerable<ChatMessage> chatMessages) : IResult
+    private sealed class OpenAIStreamingResponsesResult(AIAgent agent, IEnumerable<ChatMessage> chatMessages) : IResult
     {
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
         [System.Diagnostics.CodeAnalysis.SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
