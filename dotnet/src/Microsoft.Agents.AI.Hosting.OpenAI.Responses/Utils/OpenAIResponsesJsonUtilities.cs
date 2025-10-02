@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
+namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
 
 internal static partial class OpenAIResponsesJsonUtilities
 {
@@ -35,9 +35,10 @@ internal static partial class OpenAIResponsesJsonUtilities
     [UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access", Justification = "Converter is guarded by IsReflectionEnabledByDefault check.")]
     private static JsonSerializerOptions CreateDefaultOptions()
     {
-        // Copy the configuration from the source generated context.
         JsonSerializerOptions options = new(AgentHostingJsonUtilities.DefaultOptions);
-        options.Converters.Add(new JsonStringEnumConverter());
+
+        options.Converters.Add(new ResponseItemJsonConverter());
+        options.Converters.Add(new OpenAIResponseJsonConverter());
 
         options.MakeReadOnly();
         return options;

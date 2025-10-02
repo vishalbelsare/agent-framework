@@ -5,6 +5,7 @@ using System.Buffers;
 using System.ClientModel.Primitives;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -12,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Agents.AI.Extensions;
 using Microsoft.Agents.AI.Hosting.Responses.Model;
+using Microsoft.Agents.AI.Hosting.Responses.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.AI;
@@ -95,34 +97,95 @@ internal class AIAgentResponsesProcessor
             response.Headers.ContentEncoding = "identity";
             httpContext.Features.GetRequiredFeature<IHttpResponseBodyFeature>().DisableBuffering();
 
-            var streamingResponseEventTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(typeof(StreamingResponseUpdate));
-
             return SseFormatter.WriteAsync(
                 source: this.GetStreamingResponsesAsync(cancellationToken),
                 destination: response.Body,
                 itemFormatter: (sseItem, bufferWriter) =>
                 {
-                    var json = JsonSerializer.SerializeToUtf8Bytes(sseItem.Data, streamingResponseEventTypeInfo);
+                    var json = JsonSerializer.SerializeToUtf8Bytes(sseItem.Data, sseItem.Data.GetType(), OpenAIResponsesJsonUtilities.DefaultOptions);
                     bufferWriter.Write(json);
                 },
                 cancellationToken);
         }
 
-        private async IAsyncEnumerable<SseItem<StreamingResponseUpdate>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        private async IAsyncEnumerable<SseItem<StreamingResponseEventBase>> GetStreamingResponsesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             string eventType;
             var sequenceNumber = 1;
+            var outputIndex = 1;
             AgentThread? agentThread = null!;
-            var agentRunResponseUpdateTypeInfo = AgentAbstractionsJsonUtilities.DefaultOptions.GetTypeInfo(typeof(AgentRunResponseUpdate));
+
+            string? lastMessageId = null;
+            ResponseItem? lastResponseItem = null;
+            OpenAIResponse? lastOpenAIResponse = null;
 
             await foreach (var update in agent.RunStreamingAsync(chatMessages, thread: agentThread, cancellationToken: cancellationToken).ConfigureAwait(false))
             {
-                foreach (var content in update.Contents)
+                if (string.IsNullOrEmpty(update.ResponseId))
                 {
-                    Console.WriteLine(content);
-                    yield return new SseItem<StreamingResponseUpdate>(null!);
+                    continue;
                 }
+
+                if (sequenceNumber == 1)
+                {
+                    lastOpenAIResponse = update.AsChatResponse().AsOpenAIResponse();
+
+                    var responseCreated = new StreamingCreatedResponse(sequenceNumber++)
+                    {
+                        Response = lastOpenAIResponse
+                    };
+                    yield return GiveNextSseItem(responseCreated);
+                }
+
+                if (update.Contents is null || update.Contents.Count == 0)
+                {
+                    continue;
+                }
+
+                // to help convert the AIContent into OpenAI ResponseItem we pack it into the known "chatMessage"
+                // and use existing convertion extension method
+                var chatMessage = new ChatMessage(ChatRole.Assistant, update.Contents)
+                {
+                    MessageId = update.MessageId,
+                    CreatedAt = update.CreatedAt,
+                    RawRepresentation = update.RawRepresentation
+                };
+                var openAIResponseItem = MicrosoftExtensionsAIResponsesExtensions.AsOpenAIResponseItems([chatMessage]).FirstOrDefault();
+                lastResponseItem ??= openAIResponseItem;
+
+                var responseOutputItemAdded = new StreamingOutputItemAddedResponse(sequenceNumber++)
+                {
+                    OutputIndex = outputIndex++,
+                    Item = openAIResponseItem
+                };
+                yield return GiveNextSseItem(responseOutputItemAdded);
             }
+
+            if (lastResponseItem is not null)
+            {
+                // we were streaming "response.output_item.added" before
+                // so we should complete it now via "response.output_item.done"
+                var responseOutputItemAdded = new StreamingOutputItemDoneResponse(sequenceNumber++)
+                {
+                    OutputIndex = outputIndex++,
+                    Item = lastResponseItem
+                };
+
+                yield return GiveNextSseItem(responseOutputItemAdded);
+            }
+
+            if (lastOpenAIResponse is not null)
+            {
+                // complete the whole streaming with the full response model
+                var responseCompleted = new StreamingCompletedResponse(sequenceNumber++)
+                {
+                    Response = lastOpenAIResponse
+                };
+                yield return GiveNextSseItem(responseCompleted);
+            }
+
+            static SseItem<StreamingResponseEventBase> GiveNextSseItem<T>(T item) where T : StreamingResponseEventBase
+                => new(item, item.Type);
         }
     }
 }
