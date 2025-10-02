@@ -11,9 +11,10 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Extensions;
-using Microsoft.Agents.AI.Hosting.Responses.Model;
-using Microsoft.Agents.AI.Hosting.Responses.Utils;
+using Microsoft.Agents.AI.Hosting.OpenAI.Responses.Model;
+using Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.AI;
@@ -21,7 +22,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI.Responses;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Internal;
 
 /// <summary>
 /// OpenAI Responses processor associated with a specific <see cref="AIAgent"/>.

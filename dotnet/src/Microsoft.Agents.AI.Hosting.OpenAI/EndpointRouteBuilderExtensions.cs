@@ -5,7 +5,7 @@ using System.ClientModel.Primitives;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Microsoft.Agents.AI.Hosting.Responses.Internal;
+using Microsoft.Agents.AI.Hosting.OpenAI.Responses.Internal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenAI.Responses;
 
-namespace Microsoft.Agents.AI.Hosting.Responses;
+namespace Microsoft.Agents.AI.Hosting.OpenAI;
 
 /// <summary>
 /// Provides extension methods for mapping OpenAI Responses capabilities to an <see cref="AIAgent"/>.

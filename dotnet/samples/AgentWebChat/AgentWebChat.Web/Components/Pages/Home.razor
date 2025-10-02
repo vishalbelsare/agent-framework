@@ -4,7 +4,7 @@
 @inject IJSRuntime JSRuntime
 @inject ILogger<Home> Logger
 @inject A2AAgentClient A2AActorClient
-@inject OpenAIResponsesActorClient OpenAIResponsesActorClient
+@inject OpenAIResponsesAgentClient OpenAIResponsesAgentClient
 @rendermode InteractiveServer
 @using System.Text
 @using System.Text.Json
@@ -1084,7 +1084,7 @@
 			// Select the appropriate client based on protocol
 			IAgentClient agentClient = selectedProtocol switch
 			{
-				Protocol.OpenAIResponses => OpenAIResponsesActorClient,
+				Protocol.OpenAIResponses => OpenAIResponsesAgentClient,
 				Protocol.A2A or _ => A2AActorClient
 			};
 

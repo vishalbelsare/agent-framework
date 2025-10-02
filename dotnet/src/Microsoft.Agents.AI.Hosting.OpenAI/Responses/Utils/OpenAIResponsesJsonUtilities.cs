@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 
 internal static partial class OpenAIResponsesJsonUtilities
 {

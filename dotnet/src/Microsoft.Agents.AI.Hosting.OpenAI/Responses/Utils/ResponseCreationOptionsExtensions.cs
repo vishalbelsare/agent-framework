@@ -7,7 +7,7 @@ using System.Reflection;
 using Microsoft.Shared.Diagnostics;
 using OpenAI.Responses;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "Specifically for accessing hidden members")]
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1065:Do not raise exceptions in unexpected locations", Justification = "Specifically for accessing hidden members")]

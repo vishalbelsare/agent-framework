@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OpenAI.Responses;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Utils;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 
 internal sealed class OpenAIResponseJsonConverter : JsonConverter<OpenAIResponse>
 {

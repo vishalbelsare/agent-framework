@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Internal;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Internal;
 
 internal sealed class AIAgentConversationsProcessor
 {

@@ -3,7 +3,7 @@
 using System.Text.Json.Serialization;
 using OpenAI.Responses;
 
-namespace Microsoft.Agents.AI.Hosting.Responses.Model;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Model;
 
 /// <summary>
 /// Abstract base class for all streaming response events in the OpenAI Responses API.
