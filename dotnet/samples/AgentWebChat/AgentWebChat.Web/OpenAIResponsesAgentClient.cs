@@ -13,11 +13,11 @@ namespace AgentWebChat.Web;
 
 [SuppressMessage("Style", "IDE0051:Remove unused private members", Justification = "for debug / sample purposes")]
 [SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "debug")]
-internal sealed class OpenAIResponsesActorClient : IAgentClient
+internal sealed class OpenAIResponsesAgentClient : IAgentClient
 {
     private readonly string _baseUri;
 
-    public OpenAIResponsesActorClient(string baseUri)
+    public OpenAIResponsesAgentClient(string baseUri)
     {
         this._baseUri = baseUri.TrimEnd('/');
     }
