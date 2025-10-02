@@ -23,6 +23,7 @@ internal sealed class ResponseItemJsonConverter : JsonConverter<ResponseItem?>
     {
         if (value is null)
         {
+            writer.WriteNullValue();
             return;
         }
 
