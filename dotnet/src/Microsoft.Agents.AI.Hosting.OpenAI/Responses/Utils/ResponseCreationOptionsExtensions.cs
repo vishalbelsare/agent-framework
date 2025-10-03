@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.Shared.Diagnostics;
 using OpenAI.Responses;
@@ -27,9 +26,7 @@ internal static class ResponseCreationOptionsExtensions
             ?? throw new MissingMemberException(typeof(ResponseCreationOptions).FullName!, streamPropName);
         var streamGetter = streamProp.GetGetMethod(nonPublic: true) ?? throw new MissingMethodException($"{streamPropName} getter not found.");
 
-        var param = Expression.Parameter(typeof(ResponseCreationOptions), "o");
-        var streamCall = Expression.Call(param, streamGetter);
-        _getStreamNullable = Expression.Lambda<Func<ResponseCreationOptions, bool?>>(streamCall, param).Compile();
+        _getStreamNullable = streamGetter.CreateDelegate<Func<ResponseCreationOptions, bool?>>();
 
         // --- Input (internal IList<ResponseItem> Input { get; set; }) ---
         const string inputPropName = "Input";
@@ -38,8 +35,7 @@ internal static class ResponseCreationOptionsExtensions
         var inputGetter = inputProp.GetGetMethod(nonPublic: true)
             ?? throw new MissingMethodException($"{inputPropName} getter not found.");
 
-        var inputCall = Expression.Call(param, inputGetter);
-        _getInput = Expression.Lambda<Func<ResponseCreationOptions, IList<ResponseItem>>>(inputCall, param).Compile();
+        _getInput = inputGetter.CreateDelegate<Func<ResponseCreationOptions, IList<ResponseItem>>>();
     }
 
     public static bool GetStream(this ResponseCreationOptions options)

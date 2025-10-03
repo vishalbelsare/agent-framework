@@ -9,9 +9,7 @@ namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Model;
 /// Abstract base class for all streaming response events in the OpenAI Responses API.
 /// Provides common properties shared across all streaming event types.
 /// </summary>
-#pragma warning disable CA1012 // Abstract types should not have public constructors
-public abstract class StreamingResponseEventBase
-#pragma warning restore CA1012 // Abstract types should not have public constructors
+internal abstract class StreamingResponseEventBase
 {
     /// <summary>
     /// Gets or sets the type identifier for the streaming response event.
@@ -44,7 +42,7 @@ public abstract class StreamingResponseEventBase
 /// Represents a streaming response event indicating that a new output item has been added to the response.
 /// This event is sent when the AI agent produces a new piece of content during streaming.
 /// </summary>
-public class StreamingOutputItemAddedResponse : StreamingResponseEventBase
+internal class StreamingOutputItemAddedResponse : StreamingResponseEventBase
 {
     /// <summary>
     /// The constant event type identifier for output item added events.
@@ -78,7 +76,7 @@ public class StreamingOutputItemAddedResponse : StreamingResponseEventBase
 /// Represents a streaming response event indicating that an output item has been completed.
 /// This event is sent when the AI agent finishes producing a particular piece of content.
 /// </summary>
-public class StreamingOutputItemDoneResponse : StreamingResponseEventBase
+internal class StreamingOutputItemDoneResponse : StreamingResponseEventBase
 {
     /// <summary>
     /// The constant event type identifier for output item done events.
@@ -112,7 +110,7 @@ public class StreamingOutputItemDoneResponse : StreamingResponseEventBase
 /// Represents a streaming response event indicating that a new response has been created and streaming has begun.
 /// This is typically the first event sent in a streaming response sequence.
 /// </summary>
-public class StreamingCreatedResponse : StreamingResponseEventBase
+internal class StreamingCreatedResponse : StreamingResponseEventBase
 {
     /// <summary>
     /// The constant event type identifier for response created events.
@@ -139,7 +137,7 @@ public class StreamingCreatedResponse : StreamingResponseEventBase
 /// Represents a streaming response event indicating that the response has been completed.
 /// This is typically the last event sent in a streaming response sequence.
 /// </summary>
-public class StreamingCompletedResponse : StreamingResponseEventBase
+internal class StreamingCompletedResponse : StreamingResponseEventBase
 {
     /// <summary>
     /// The constant event type identifier for response completed events.

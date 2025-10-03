@@ -81,8 +81,6 @@ internal sealed class AIAgentResponsesProcessor
 
     private sealed class OpenAIStreamingResponsesResult(AIAgent agent, IEnumerable<ChatMessage> chatMessages) : IResult
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
         public Task ExecuteAsync(HttpContext httpContext)
         {
             var cancellationToken = httpContext.RequestAborted;
@@ -100,7 +98,8 @@ internal sealed class AIAgentResponsesProcessor
                 destination: response.Body,
                 itemFormatter: (sseItem, bufferWriter) =>
                 {
-                    var json = JsonSerializer.SerializeToUtf8Bytes(sseItem.Data, sseItem.Data.GetType(), OpenAIResponsesJsonUtilities.DefaultOptions);
+                    var jsonTypeInfo = OpenAIResponsesJsonUtilities.DefaultOptions.GetTypeInfo(sseItem.Data.GetType());
+                    var json = JsonSerializer.SerializeToUtf8Bytes(sseItem.Data, jsonTypeInfo);
                     bufferWriter.Write(json);
                 },
                 cancellationToken);

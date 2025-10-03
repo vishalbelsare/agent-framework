@@ -19,8 +19,8 @@ namespace Microsoft.Agents.AI.Hosting.OpenAI;
 /// <summary>
 /// Provides extension methods for mapping OpenAI Responses capabilities to an <see cref="AIAgent"/>.
 /// </summary>
-[SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-[SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
+//[SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+//[SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
 public static class EndpointRouteBuilderExtensions
 {
     /// <summary>
@@ -41,7 +41,6 @@ public static class EndpointRouteBuilderExtensions
 
         var loggerFactory = endpoints.ServiceProvider.GetService<ILoggerFactory>();
         var agent = endpoints.ServiceProvider.GetRequiredKeyedService<AIAgent>(agentName);
-        ArgumentNullException.ThrowIfNull(agent.Name, nameof(agent.Name));
 
         responsesPath ??= $"/{agentName}/v1/responses";
         var responsesRouteGroup = endpoints.MapGroup(responsesPath);
@@ -56,8 +55,10 @@ public static class EndpointRouteBuilderExtensions
 
     private static void MapResponses(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
     {
-        var agentName = agent.Name;
+        var endpointAgentName = agent.Name ?? agent.Id;
         var responsesProcessor = new AIAgentResponsesProcessor(agent, loggerFactory);
+
+        routeGroup.MapGet("/test", () => "test");
 
         routeGroup.MapPost("/", async (HttpContext requestContext, CancellationToken cancellationToken) =>
         {
@@ -74,18 +75,18 @@ public static class EndpointRouteBuilderExtensions
             }
 
             return await responsesProcessor.CreateModelResponseAsync(responseOptions, cancellationToken).ConfigureAwait(false);
-        }).WithName(agentName + "/CreateResponse");
+        }).WithName(endpointAgentName + "/CreateResponse");
     }
 
 #pragma warning disable IDE0051 // Remove unused private members
     private static void MapConversations(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
 #pragma warning restore IDE0051 // Remove unused private members
     {
-        var agentName = agent.Name;
+        var endpointAgentName = agent.Name ?? agent.Id;
         var conversationsProcessor = new AIAgentConversationsProcessor(agent, loggerFactory);
 
         routeGroup.MapGet("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
             => conversationsProcessor.GetConversationAsync(conversationId, cancellationToken)
-        ).WithName(agentName + "/RetrieveConversation");
+        ).WithName(endpointAgentName + "/RetrieveConversation");
     }
 }
