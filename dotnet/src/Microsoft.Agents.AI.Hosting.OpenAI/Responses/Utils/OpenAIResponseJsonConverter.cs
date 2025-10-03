@@ -11,10 +11,9 @@ namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 
 internal sealed class OpenAIResponseJsonConverter : JsonConverter<OpenAIResponse>
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "relying specifically on IJsonModel for json conversion")]
     public override OpenAIResponse? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        var item = OpenAIResponsesModelFactory.MessageResponseItem();
+        var item = OpenAIResponsesModelFactory.OpenAIResponse();
         var jsonModel = item as IJsonModel<OpenAIResponse>;
         Debug.Assert(jsonModel is not null, "OpenAIResponse should implement IJsonModel<OpenAIResponse>");
 
