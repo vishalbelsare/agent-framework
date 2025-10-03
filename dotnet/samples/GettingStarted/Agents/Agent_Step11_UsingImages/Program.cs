@@ -2,7 +2,6 @@
 
 // This sample shows how to use Image Multi-Modality with an AI agent.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using Azure.Identity;
 using Microsoft.Extensions.AI;

@@ -2,7 +2,6 @@
 
 // This sample shows how to create and use a simple AI agent with a conversation that can be persisted to disk.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text.Json;
 using Azure.Identity;

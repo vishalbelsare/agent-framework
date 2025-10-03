@@ -6,7 +6,6 @@
 // The component adds a prompt to ask for this information if it is not already known
 // and provides it to the model before each invocation if known.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Text;
 using System.Text.Json;

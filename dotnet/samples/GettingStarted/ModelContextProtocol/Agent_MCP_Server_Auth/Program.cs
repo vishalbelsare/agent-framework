@@ -2,7 +2,6 @@
 
 // This sample shows how to create and use a simple AI agent with tools from an MCP Server that requires authentication.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Diagnostics;
 using System.Net;

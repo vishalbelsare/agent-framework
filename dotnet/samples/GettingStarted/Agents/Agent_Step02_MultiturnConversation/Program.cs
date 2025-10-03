@@ -2,7 +2,6 @@
 
 // This sample shows how to create and use a simple AI agent with a multi-turn conversation.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using Azure.Identity;
 using Microsoft.Agents.AI;

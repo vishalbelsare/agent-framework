@@ -2,7 +2,6 @@
 
 // This sample shows how to create and use a simple AI agent with tools from an MCP Server.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using Azure.Identity;
 using Microsoft.Agents.AI;

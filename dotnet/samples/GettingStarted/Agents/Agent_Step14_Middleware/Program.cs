@@ -5,7 +5,6 @@
 // function invocation (logging and result overrides), and human-in-the-loop
 // approval workflows for sensitive function calls.
 
-using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
