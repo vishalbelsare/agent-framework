@@ -6,6 +6,8 @@
     <NoWarn>$(NoWarn);IDE1006;IDE0130;NU1504;OPENAI001</NoWarn>
     <RootNamespace>Microsoft.Agents.AI.Hosting.OpenAI</RootNamespace>
     <VersionSuffix>alpha</VersionSuffix>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
   </PropertyGroup>
 
   <Import Project="$(RepoRoot)/dotnet/nuget/nuget-package.props" />

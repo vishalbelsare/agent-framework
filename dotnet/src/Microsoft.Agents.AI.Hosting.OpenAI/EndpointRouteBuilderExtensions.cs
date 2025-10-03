@@ -19,8 +19,6 @@ namespace Microsoft.Agents.AI.Hosting.OpenAI;
 /// <summary>
 /// Provides extension methods for mapping OpenAI Responses capabilities to an <see cref="AIAgent"/>.
 /// </summary>
-[SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-[SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
 public static class EndpointRouteBuilderExtensions
 {
     /// <summary>
@@ -57,8 +55,6 @@ public static class EndpointRouteBuilderExtensions
     {
         var endpointAgentName = agent.DisplayName;
         var responsesProcessor = new AIAgentResponsesProcessor(agent, loggerFactory);
-
-        routeGroup.MapGet("/test", () => "test");
 
         routeGroup.MapPost("/", async (HttpContext requestContext, CancellationToken cancellationToken) =>
         {
