@@ -17,7 +17,7 @@ static string GetWeather([Description("The location to get the weather for.")] s
     => $"The weather in {location} is cloudy with a high of 15°C.";
 
 var clientOptions = new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") };
-var apiCredential = new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default");
+var apiCredential = new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default");
 
 // Create the chat client and agent, and provide the function tool to the agent.
 AIAgent weatherAgent = new OpenAIClient(apiCredential, clientOptions)

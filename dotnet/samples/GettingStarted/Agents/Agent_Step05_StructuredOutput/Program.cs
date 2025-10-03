@@ -26,7 +26,7 @@ ChatClientAgentOptions agentOptions = new(name: "HelpfulAssistant", instructions
 
 // Create the agent using Azure OpenAI.
 AIAgent agent = new OpenAIClient(
-    new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+    new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
     new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
         .GetChatClient(deploymentName)
         .CreateAIAgent(agentOptions);

@@ -132,7 +132,7 @@ var endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")!;
 var deploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME")!;
 
 var agent = new OpenAIClient(
-        new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+        new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
         new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
     .GetOpenAIResponseClient(deploymentName)
     .CreateAIAgent(name: "HaikuBot", instructions: "You are an upbeat assistant that writes beautifully.");

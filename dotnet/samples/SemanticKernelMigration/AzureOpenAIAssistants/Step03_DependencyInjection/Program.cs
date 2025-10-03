@@ -25,7 +25,7 @@ async Task SKAgent()
 
     var serviceCollection = new ServiceCollection();
     serviceCollection.AddSingleton((sp) => new OpenAIClient(
-        new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+        new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
         new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
         .GetAssistantClient());
     serviceCollection.AddKernel().AddAzureOpenAIChatClient(deploymentName, endpoint, new AzureCliCredential());
@@ -69,7 +69,7 @@ async Task AFAgent()
 
     var serviceCollection = new ServiceCollection();
     serviceCollection.AddSingleton((sp) => new OpenAIClient(
-        new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+        new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
         new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
         .GetAssistantClient());
     serviceCollection.AddTransient((sp) =>

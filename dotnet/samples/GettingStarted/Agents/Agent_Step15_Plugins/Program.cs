@@ -31,7 +31,7 @@ const string AgentName = "Assistant";
 const string AgentInstructions = "You are a helpful assistant that helps people find information.";
 
 AIAgent agent = new OpenAIClient(
-    new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+    new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
     new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
      .GetChatClient(deploymentName)
      .CreateAIAgent(

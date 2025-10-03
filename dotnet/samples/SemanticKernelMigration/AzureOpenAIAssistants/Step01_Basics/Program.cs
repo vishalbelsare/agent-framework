@@ -24,7 +24,7 @@ async Task SKAgent()
     var _ = Kernel.CreateBuilder().AddAzureOpenAIChatClient(deploymentName, endpoint, new AzureCliCredential());
 
     var assistantsClient = new OpenAIClient(
-        new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+        new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
         new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
         .GetAssistantClient();
 
@@ -60,7 +60,7 @@ async Task AFAgent()
     Console.WriteLine("\n=== AF Agent ===\n");
 
     var assistantClient = new OpenAIClient(
-        new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+        new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
         new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
         .GetAssistantClient();
 

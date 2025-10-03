@@ -14,7 +14,7 @@ const string JokerName = "Joker";
 const string JokerInstructions = "You are good at telling jokes.";
 
 AIAgent agent = new OpenAIClient(
-    new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+    new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
     new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
      .GetOpenAIResponseClient(deploymentName)
      .CreateAIAgent(JokerInstructions, JokerName);

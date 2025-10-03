@@ -16,7 +16,7 @@ var deploymentName = System.Environment.GetEnvironmentVariable("AZURE_OPENAI_DEP
 var userInput = "Create a python code file using the code interpreter tool with a code ready to determine the values in the Fibonacci sequence that are less then the value of 101";
 
 var assistantsClient = new OpenAIClient(
-    new BearerTokenPolicy(new AzureCliCredential(), "https://cognitiveservices.azure.com/.default"),
+    new BearerTokenPolicy(new AzureCliCredential(), "https://ai.azure.com/.default"),
     new OpenAIClientOptions() { Endpoint = new Uri($"{endpoint}/openai/v1") })
     .GetAssistantClient();
 
