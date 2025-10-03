@@ -226,7 +226,7 @@ internal sealed class WorkflowTemplateVisitor : DialogActionVisitor
         // Transition to post action if complete
         this._workflowModel.AddLink(actionId, postId, $"!{nameof(ActionExecutor)}.{nameof(ActionExecutor.HasResult)}(result)");
 
-        // Perpare for input request if not complete
+        // Prepare for input request if not complete
         string prepareId = QuestionExecutor.Steps.Prepare(actionId);
         this.ContinueWith(new EmptyTemplate(prepareId, this._rootId/*, // %%% ACTION: action.PrepareResponseAsync*/), parentId, $"{nameof(ActionExecutor)}.{nameof(ActionExecutor.HasResult)}(result)");
 
