@@ -19,8 +19,8 @@ namespace Microsoft.Agents.AI.Hosting.OpenAI;
 /// <summary>
 /// Provides extension methods for mapping OpenAI Responses capabilities to an <see cref="AIAgent"/>.
 /// </summary>
-//[SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-//[SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
+[SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+[SuppressMessage("AOT", "IL3050:Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.", Justification = "<Pending>")]
 public static class EndpointRouteBuilderExtensions
 {
     /// <summary>
@@ -55,7 +55,7 @@ public static class EndpointRouteBuilderExtensions
 
     private static void MapResponses(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
     {
-        var endpointAgentName = agent.Name ?? agent.Id;
+        var endpointAgentName = agent.DisplayName;
         var responsesProcessor = new AIAgentResponsesProcessor(agent, loggerFactory);
 
         routeGroup.MapGet("/test", () => "test");
@@ -82,7 +82,7 @@ public static class EndpointRouteBuilderExtensions
     private static void MapConversations(IEndpointRouteBuilder routeGroup, AIAgent agent, ILoggerFactory? loggerFactory)
 #pragma warning restore IDE0051 // Remove unused private members
     {
-        var endpointAgentName = agent.Name ?? agent.Id;
+        var endpointAgentName = agent.DisplayName;
         var conversationsProcessor = new AIAgentConversationsProcessor(agent, loggerFactory);
 
         routeGroup.MapGet("/{conversation_id}", (string conversationId, CancellationToken cancellationToken)
