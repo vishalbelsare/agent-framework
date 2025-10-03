@@ -47,7 +47,6 @@ For MacOS users, Homebrew provides an easy installation of uv with the [uv Formu
 brew install uv
 ```
 
-##
 
 ### After installing uv
 
