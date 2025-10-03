@@ -117,8 +117,8 @@ internal sealed class AIAgentResponsesProcessor
             await foreach (var update in agent.RunStreamingAsync(chatMessages, thread: agentThread, cancellationToken: cancellationToken).ConfigureAwait(false))
             {
                 if (string.IsNullOrEmpty(update.ResponseId)
-                    || string.IsNullOrEmpty(update.MessageId)
-                    || update.Contents is null || update.Contents.Count == 0)
+                    && string.IsNullOrEmpty(update.MessageId)
+                    && (update.Contents is null || update.Contents.Count == 0))
                 {
                     continue;
                 }
