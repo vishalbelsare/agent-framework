@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.ClientModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using A2A;
 using Microsoft.Agents.AI;
@@ -11,8 +10,6 @@ using OpenAI.Responses;
 
 namespace AgentWebChat.Web;
 
-[SuppressMessage("Style", "IDE0051:Remove unused private members", Justification = "for debug / sample purposes")]
-[SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "debug")]
 internal sealed class OpenAIResponsesAgentClient : IAgentClient
 {
     private readonly Uri _baseUri;
