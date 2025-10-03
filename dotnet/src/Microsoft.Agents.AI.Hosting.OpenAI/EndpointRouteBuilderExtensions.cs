@@ -37,7 +37,7 @@ public static class EndpointRouteBuilderExtensions
         [StringSyntax("Route")] string? conversationsPath = null)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-        ArgumentNullException.ThrowIfNull(agentName, nameof(agentName));
+        ArgumentNullException.ThrowIfNull(agentName);
 
         var loggerFactory = endpoints.ServiceProvider.GetService<ILoggerFactory>();
         var agent = endpoints.ServiceProvider.GetRequiredKeyedService<AIAgent>(agentName);

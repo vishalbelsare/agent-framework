@@ -12,7 +12,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Extensions;
 using Microsoft.Agents.AI.Hosting.OpenAI.Responses.Model;
 using Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 using Microsoft.AspNetCore.Http;
@@ -131,7 +130,7 @@ internal sealed class AIAgentResponsesProcessor
                     {
                         Response = lastOpenAIResponse
                     };
-                    yield return GiveNextSseItem(responseCreated);
+                    yield return new(responseCreated, responseCreated.Type);
                 }
 
                 if (update.Contents is null || update.Contents.Count == 0)
@@ -155,7 +154,7 @@ internal sealed class AIAgentResponsesProcessor
                     OutputIndex = outputIndex++,
                     Item = openAIResponseItem
                 };
-                yield return GiveNextSseItem(responseOutputItemAdded);
+                yield return new(responseOutputItemAdded, responseOutputItemAdded.Type);
             }
 
             if (lastResponseItem is not null)
@@ -167,8 +166,7 @@ internal sealed class AIAgentResponsesProcessor
                     OutputIndex = outputIndex++,
                     Item = lastResponseItem
                 };
-
-                yield return GiveNextSseItem(responseOutputItemAdded);
+                yield return new(responseOutputItemAdded, responseOutputItemAdded.Type);
             }
 
             if (lastOpenAIResponse is not null)
@@ -178,11 +176,8 @@ internal sealed class AIAgentResponsesProcessor
                 {
                     Response = lastOpenAIResponse
                 };
-                yield return GiveNextSseItem(responseCompleted);
+                yield return new(responseCompleted, responseCompleted.Type);
             }
-
-            static SseItem<StreamingResponseEventBase> GiveNextSseItem<T>(T item) where T : StreamingResponseEventBase
-                => new(item, item.Type);
         }
     }
 }

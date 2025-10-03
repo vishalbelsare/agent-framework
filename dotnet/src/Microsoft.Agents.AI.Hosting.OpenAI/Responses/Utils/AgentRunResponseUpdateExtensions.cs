@@ -2,12 +2,9 @@
 
 using Microsoft.Extensions.AI;
 
-namespace Microsoft.Agents.AI.Extensions;
+namespace Microsoft.Agents.AI.Hosting.OpenAI.Responses.Utils;
 
-/// <summary>
-/// Provides extension methods for <see cref="AgentRunResponseUpdate"/>.
-/// </summary>
-public static class AgentRunResponseUpdateExtensions
+internal static class AgentRunResponseUpdateExtensions
 {
     /// <summary>
     /// Converts an <see cref="AgentRunResponseUpdate"/> instance to a <see cref="ChatResponse"/>.

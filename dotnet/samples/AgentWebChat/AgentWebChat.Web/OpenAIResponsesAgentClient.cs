@@ -15,11 +15,11 @@ namespace AgentWebChat.Web;
 [SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "debug")]
 internal sealed class OpenAIResponsesAgentClient : IAgentClient
 {
-    private readonly string _baseUri;
+    private readonly Uri _baseUri;
 
     public OpenAIResponsesAgentClient(string baseUri)
     {
-        this._baseUri = baseUri.TrimEnd('/');
+        this._baseUri = new Uri(baseUri.TrimEnd('/'));
     }
 
     public async IAsyncEnumerable<AgentRunResponseUpdate> RunStreamingAsync(
@@ -33,13 +33,10 @@ internal sealed class OpenAIResponsesAgentClient : IAgentClient
 
         OpenAIClientOptions options = new()
         {
-            Endpoint = new Uri(this._baseUri + relativeUri)
+            Endpoint = new Uri(this._baseUri, relativeUri)
         };
 
-#pragma warning disable OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
         OpenAIResponseClient openAiClient = new(model: "myModel!", credential: new ApiKeyCredential("dummy-key"), options: options);
-#pragma warning restore OPENAI001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-
         var chatClient = openAiClient.AsIChatClient();
         var chatOptions = new ChatOptions()
         {
