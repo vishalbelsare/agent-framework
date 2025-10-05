@@ -76,7 +76,7 @@ class OpenAIAssistantsClient(OpenAIConfigMixin, BaseChatClient):
     ) -> None:
         """Initialize an OpenAI Assistants client.
 
-        Args:
+        Keyword Args:
             model_id: OpenAI model name, see https://platform.openai.com/docs/models.
                 Can also be set via environment variable OPENAI_CHAT_MODEL_ID.
             assistant_id: The ID of an OpenAI assistant to use.
