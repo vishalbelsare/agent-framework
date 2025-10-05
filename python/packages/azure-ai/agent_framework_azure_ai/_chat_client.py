@@ -163,7 +163,7 @@ class AzureAIAgentClient(BaseChatClient):
         env_file_encoding: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize a AzureAIAgentClient.
+        """Initialize an Azure AI Agent client.
 
         Args:
             project_client: An existing AIProjectClient to use. If not provided, one will be created.
@@ -172,15 +172,41 @@ class AzureAIAgentClient(BaseChatClient):
                 nor agent_id is provided, both will be created and managed automatically.
             agent_name: The name to use when creating new agents.
             thread_id: Default thread ID to use for conversations. Can be overridden by
-                conversation_id property, when making a request.
-            project_endpoint: The Azure AI Project endpoint URL, can also be set via
-                'AZURE_AI_PROJECT_ENDPOINT' environment variable. Is ignored when a project_client is passed.
+                conversation_id property when making a request.
+            project_endpoint: The Azure AI Project endpoint URL.
+                Can also be set via environment variable AZURE_AI_PROJECT_ENDPOINT.
+                Ignored when a project_client is passed.
             model_deployment_name: The model deployment name to use for agent creation.
-                Can also be set via 'AZURE_AI_MODEL_DEPLOYMENT_NAME' environment variable.
+                Can also be set via environment variable AZURE_AI_MODEL_DEPLOYMENT_NAME.
             async_credential: Azure async credential to use for authentication.
             env_file_path: Path to environment file for loading settings.
             env_file_encoding: Encoding of the environment file.
             **kwargs: Additional keyword arguments passed to the parent class.
+
+        Examples:
+            .. code-block:: python
+
+                from agent_framework_azure_ai import AzureAIAgentClient
+                from azure.identity.aio import DefaultAzureCredential
+
+                # Using environment variables
+                # Set AZURE_AI_PROJECT_ENDPOINT=https://your-project.cognitiveservices.azure.com
+                # Set AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-4
+                credential = DefaultAzureCredential()
+                client = AzureAIAgentClient(async_credential=credential)
+
+                # Or passing parameters directly
+                client = AzureAIAgentClient(
+                    project_endpoint="https://your-project.cognitiveservices.azure.com",
+                    model_deployment_name="gpt-4",
+                    async_credential=credential
+                )
+
+                # Or loading from a .env file
+                client = AzureAIAgentClient(
+                    async_credential=credential,
+                    env_file_path="path/to/.env"
+                )
         """
         try:
             azure_ai_settings = AzureAISettings(
