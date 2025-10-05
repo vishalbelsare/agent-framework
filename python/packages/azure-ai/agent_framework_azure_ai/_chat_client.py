@@ -104,13 +104,32 @@ class AzureAISettings(AFBaseSettings):
     with the encoding 'utf-8'. If the settings are not found in the .env file, the settings
     are ignored; however, validation will fail alerting that the settings are missing.
 
-    Args:
+    Keyword Args:
         project_endpoint: The Azure AI Project endpoint URL.
-            (Env var AZURE_AI_PROJECT_ENDPOINT)
+            Can be set via environment variable AZURE_AI_PROJECT_ENDPOINT.
         model_deployment_name: The name of the model deployment to use.
-            (Env var AZURE_AI_MODEL_DEPLOYMENT_NAME)
+            Can be set via environment variable AZURE_AI_MODEL_DEPLOYMENT_NAME.
         env_file_path: If provided, the .env settings are read from this file path location.
         env_file_encoding: The encoding of the .env file, defaults to 'utf-8'.
+
+    Examples:
+        .. code-block:: python
+
+            from agent_framework_azure_ai import AzureAISettings
+
+            # Using environment variables
+            # Set AZURE_AI_PROJECT_ENDPOINT=https://your-project.cognitiveservices.azure.com
+            # Set AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-4
+            settings = AzureAISettings()
+
+            # Or passing parameters directly
+            settings = AzureAISettings(
+                project_endpoint="https://your-project.cognitiveservices.azure.com",
+                model_deployment_name="gpt-4"
+            )
+
+            # Or loading from a .env file
+            settings = AzureAISettings(env_file_path="path/to/.env")
     """
 
     env_prefix: ClassVar[str] = "AZURE_AI_"
