@@ -82,10 +82,7 @@ class OpenAISettings(AFBaseSettings):
             settings = OpenAISettings()
 
             # Or passing parameters directly
-            settings = OpenAISettings(
-                api_key="sk-...",
-                chat_model_id="gpt-4"
-            )
+            settings = OpenAISettings(api_key="sk-...", chat_model_id="gpt-4")
 
             # Or loading from a .env file
             settings = OpenAISettings(env_file_path="path/to/.env")

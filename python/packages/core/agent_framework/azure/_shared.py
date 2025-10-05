@@ -90,9 +90,7 @@ class AzureOpenAISettings(AFBaseSettings):
 
             # Or passing parameters directly
             settings = AzureOpenAISettings(
-                endpoint="https://your-endpoint.openai.azure.com",
-                chat_deployment_name="gpt-4",
-                api_key="your-key"
+                endpoint="https://your-endpoint.openai.azure.com", chat_deployment_name="gpt-4", api_key="your-key"
             )
 
             # Or loading from a .env file

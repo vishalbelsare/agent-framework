@@ -374,8 +374,7 @@ class ObservabilitySettings(AFBaseSettings):
 
             # Or passing parameters directly
             settings = ObservabilitySettings(
-                enable_otel=True,
-                applicationinsights_connection_string="InstrumentationKey=..."
+                enable_otel=True, applicationinsights_connection_string="InstrumentationKey=..."
             )
     """
 

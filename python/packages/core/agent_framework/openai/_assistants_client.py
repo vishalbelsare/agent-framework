@@ -60,6 +60,7 @@ class OpenAIAssistantsClient(OpenAIConfigMixin, BaseChatClient):
 
     def __init__(
         self,
+        *,
         model_id: str | None = None,
         assistant_id: str | None = None,
         assistant_name: str | None = None,
@@ -109,10 +110,7 @@ class OpenAIAssistantsClient(OpenAIConfigMixin, BaseChatClient):
                 client = OpenAIAssistantsClient()
 
                 # Or passing parameters directly
-                client = OpenAIAssistantsClient(
-                    model_id="gpt-4",
-                    api_key="sk-..."
-                )
+                client = OpenAIAssistantsClient(model_id="gpt-4", api_key="sk-...")
 
                 # Or loading from a .env file
                 client = OpenAIAssistantsClient(env_file_path="path/to/.env")

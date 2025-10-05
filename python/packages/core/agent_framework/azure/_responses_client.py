@@ -29,6 +29,7 @@ class AzureOpenAIResponsesClient(AzureOpenAIConfigMixin, OpenAIBaseResponsesClie
 
     def __init__(
         self,
+        *,
         api_key: str | None = None,
         deployment_name: str | None = None,
         endpoint: str | None = None,
@@ -47,7 +48,7 @@ class AzureOpenAIResponsesClient(AzureOpenAIConfigMixin, OpenAIBaseResponsesClie
     ) -> None:
         """Initialize an Azure OpenAI Responses client.
 
-        Args:
+        Keyword Args:
             api_key: The API key. If provided, will override the value in the env vars or .env file.
                 Can also be set via environment variable AZURE_OPENAI_API_KEY.
             deployment_name: The deployment name. If provided, will override the value
@@ -89,9 +90,7 @@ class AzureOpenAIResponsesClient(AzureOpenAIConfigMixin, OpenAIBaseResponsesClie
 
                 # Or passing parameters directly
                 client = AzureOpenAIResponsesClient(
-                    endpoint="https://your-endpoint.openai.azure.com",
-                    deployment_name="gpt-4o",
-                    api_key="your-key"
+                    endpoint="https://your-endpoint.openai.azure.com", deployment_name="gpt-4o", api_key="your-key"
                 )
 
                 # Or loading from a .env file

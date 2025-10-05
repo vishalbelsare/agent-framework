@@ -124,8 +124,7 @@ class AzureAISettings(AFBaseSettings):
 
             # Or passing parameters directly
             settings = AzureAISettings(
-                project_endpoint="https://your-project.cognitiveservices.azure.com",
-                model_deployment_name="gpt-4"
+                project_endpoint="https://your-project.cognitiveservices.azure.com", model_deployment_name="gpt-4"
             )
 
             # Or loading from a .env file
@@ -165,7 +164,7 @@ class AzureAIAgentClient(BaseChatClient):
     ) -> None:
         """Initialize an Azure AI Agent client.
 
-        Args:
+        Keyword Args:
             project_client: An existing AIProjectClient to use. If not provided, one will be created.
             agent_id: The ID of an existing agent to use. If not provided and project_client is provided,
                 a new agent will be created (and deleted after the request). If neither project_client
@@ -181,7 +180,7 @@ class AzureAIAgentClient(BaseChatClient):
             async_credential: Azure async credential to use for authentication.
             env_file_path: Path to environment file for loading settings.
             env_file_encoding: Encoding of the environment file.
-            **kwargs: Additional keyword arguments passed to the parent class.
+            kwargs: Additional keyword arguments passed to the parent class.
 
         Examples:
             .. code-block:: python
@@ -199,14 +198,11 @@ class AzureAIAgentClient(BaseChatClient):
                 client = AzureAIAgentClient(
                     project_endpoint="https://your-project.cognitiveservices.azure.com",
                     model_deployment_name="gpt-4",
-                    async_credential=credential
+                    async_credential=credential,
                 )
 
                 # Or loading from a .env file
-                client = AzureAIAgentClient(
-                    async_credential=credential,
-                    env_file_path="path/to/.env"
-                )
+                client = AzureAIAgentClient(async_credential=credential, env_file_path="path/to/.env")
         """
         try:
             azure_ai_settings = AzureAISettings(

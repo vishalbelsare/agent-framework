@@ -465,6 +465,7 @@ class OpenAIChatClient(OpenAIConfigMixin, OpenAIBaseChatClient):
 
     def __init__(
         self,
+        *,
         model_id: str | None = None,
         api_key: str | None = None,
         org_id: str | None = None,
@@ -477,7 +478,7 @@ class OpenAIChatClient(OpenAIConfigMixin, OpenAIBaseChatClient):
     ) -> None:
         """Initialize an OpenAI Chat completion client.
 
-        Args:
+        Keyword Args:
             model_id: OpenAI model name, see https://platform.openai.com/docs/models.
                 Can also be set via environment variable OPENAI_CHAT_MODEL_ID.
             api_key: The API key to use. If provided will override the env vars or .env file value.
@@ -507,10 +508,7 @@ class OpenAIChatClient(OpenAIConfigMixin, OpenAIBaseChatClient):
                 client = OpenAIChatClient()
 
                 # Or passing parameters directly
-                client = OpenAIChatClient(
-                    model_id="gpt-4",
-                    api_key="sk-..."
-                )
+                client = OpenAIChatClient(model_id="gpt-4", api_key="sk-...")
 
                 # Or loading from a .env file
                 client = OpenAIChatClient(env_file_path="path/to/.env")

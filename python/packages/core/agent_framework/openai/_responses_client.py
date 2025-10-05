@@ -945,6 +945,7 @@ class OpenAIResponsesClient(OpenAIConfigMixin, OpenAIBaseResponsesClient):
 
     def __init__(
         self,
+        *,
         model_id: str | None = None,
         api_key: str | None = None,
         org_id: str | None = None,
@@ -958,7 +959,7 @@ class OpenAIResponsesClient(OpenAIConfigMixin, OpenAIBaseResponsesClient):
     ) -> None:
         """Initialize an OpenAI Responses client.
 
-        Args:
+        Keyword Args:
             model_id: OpenAI model name, see https://platform.openai.com/docs/models.
                 Can also be set via environment variable OPENAI_RESPONSES_MODEL_ID.
             api_key: The API key to use. If provided will override the env vars or .env file value.
@@ -988,10 +989,7 @@ class OpenAIResponsesClient(OpenAIConfigMixin, OpenAIBaseResponsesClient):
                 client = OpenAIResponsesClient()
 
                 # Or passing parameters directly
-                client = OpenAIResponsesClient(
-                    model_id="gpt-4o",
-                    api_key="sk-..."
-                )
+                client = OpenAIResponsesClient(model_id="gpt-4o", api_key="sk-...")
 
                 # Or loading from a .env file
                 client = OpenAIResponsesClient(env_file_path="path/to/.env")

@@ -54,10 +54,7 @@ class CopilotStudioSettings(AFBaseSettings):
             settings = CopilotStudioSettings()
 
             # Or passing parameters directly
-            settings = CopilotStudioSettings(
-                environmentid="env-123",
-                schemaname="my-agent"
-            )
+            settings = CopilotStudioSettings(environmentid="env-123", schemaname="my-agent")
 
             # Or loading from a .env file
             settings = CopilotStudioSettings(env_file_path="path/to/.env")

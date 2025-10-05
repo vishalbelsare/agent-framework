@@ -23,6 +23,7 @@ class AzureOpenAIAssistantsClient(OpenAIAssistantsClient):
 
     def __init__(
         self,
+        *,
         deployment_name: str | None = None,
         assistant_id: str | None = None,
         assistant_name: str | None = None,
@@ -42,7 +43,7 @@ class AzureOpenAIAssistantsClient(OpenAIAssistantsClient):
     ) -> None:
         """Initialize an Azure OpenAI Assistants client.
 
-        Args:
+        Keyword Args:
             deployment_name: The Azure OpenAI deployment name for the model to use.
                 Can also be set via environment variable AZURE_OPENAI_CHAT_DEPLOYMENT_NAME.
             assistant_id: The ID of an Azure OpenAI assistant to use.
@@ -87,9 +88,7 @@ class AzureOpenAIAssistantsClient(OpenAIAssistantsClient):
 
                 # Or passing parameters directly
                 client = AzureOpenAIAssistantsClient(
-                    endpoint="https://your-endpoint.openai.azure.com",
-                    deployment_name="gpt-4",
-                    api_key="your-key"
+                    endpoint="https://your-endpoint.openai.azure.com", deployment_name="gpt-4", api_key="your-key"
                 )
 
                 # Or loading from a .env file
