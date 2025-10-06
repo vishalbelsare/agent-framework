@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update References to Agent2Agent protocol to use correct terminology ([#1162](https://github.com/microsoft/agent-framework/pull/1162))
 - Update getting started samples to reflect AF and update unit test ([#1093](https://github.com/microsoft/agent-framework/pull/1093))
 - Update README with links to video content and initial code samples as quickstart ([#1049](https://github.com/microsoft/agent-framework/pull/1049))
-- Update Lab Installation instruction to install from source ([#1051](https://github.com/microsoft/agent-framework/pull/1051))
+- Update Lab Installation instructions to install from source ([#1051](https://github.com/microsoft/agent-framework/pull/1051))
 - Update python DEV_SETUP to add brew-based uv installation ([#1173](https://github.com/microsoft/agent-framework/pull/1173))
 - Update docstrings of all files and add example code in public interfaces ([#1107](https://github.com/microsoft/agent-framework/pull/1107))
 - Clarifications on installing packages in README ([#1036](https://github.com/microsoft/agent-framework/pull/1036))
