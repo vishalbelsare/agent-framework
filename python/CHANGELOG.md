@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add metapackage metadata stub to restore flit builds ([#1043](https://github.com/microsoft/agent-framework/pull/1043))
 
 ### Fixed
-- Fix MCP tool calls flatten nested JSON arguments (handle $ref schemas) ([#990](https://github.com/microsoft/agent-framework/pull/990))
+- Fix MCP tool calls to flatten nested JSON arguments (handle $ref schemas) ([#990](https://github.com/microsoft/agent-framework/pull/990))
 - Fix PyPI version strings to comply with PEP 440 ([#1040](https://github.com/microsoft/agent-framework/pull/1040))
 - Fix multimodal input sample: Document required environment variables and configuration options ([#1088](https://github.com/microsoft/agent-framework/pull/1088))
 - Fix Azure AI Getting Started samples: Improve documentation and code readability ([#1089](https://github.com/microsoft/agent-framework/pull/1089))
