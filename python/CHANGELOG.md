@@ -8,20 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Introducing AI Function approval ([#1131](https://github.com/microsoft/agent-framework/pull/1131))
 - Add name and description to workflows ([#1183](https://github.com/microsoft/agent-framework/pull/1183))
 - Add Ollama example using OpenAIChatClient ([#1100](https://github.com/microsoft/agent-framework/pull/1100))
 - Add DevUI improvements with color scheme, linking, agent details, and token usage data ([#1091](https://github.com/microsoft/agent-framework/pull/1091))
 - Add semantic-kernel to agent-framework migration code samples ([#1045](https://github.com/microsoft/agent-framework/pull/1045))
 - Add metapackage metadata stub to restore flit builds ([#1043](https://github.com/microsoft/agent-framework/pull/1043))
-
-### Fixed
-- Fix MCP tool calls to flatten nested JSON arguments (handle $ref schemas) ([#990](https://github.com/microsoft/agent-framework/pull/990))
-- Fix PyPI version strings to comply with PEP 440 ([#1040](https://github.com/microsoft/agent-framework/pull/1040))
-- Fix multimodal input sample: Document required environment variables and configuration options ([#1088](https://github.com/microsoft/agent-framework/pull/1088))
-- Fix Azure AI Getting Started samples: Improve documentation and code readability ([#1089](https://github.com/microsoft/agent-framework/pull/1089))
-- Fix a2a import ([#1058](https://github.com/microsoft/agent-framework/pull/1058))
-- Fix DevUI serialization and agent structured outputs ([#1055](https://github.com/microsoft/agent-framework/pull/1055))
-- Default DevUI workflows to string input when start node is auto-wrapped agent ([#1143](https://github.com/microsoft/agent-framework/pull/1143))
 
 ### Changed
 - Update References to Agent2Agent protocol to use correct terminology ([#1162](https://github.com/microsoft/agent-framework/pull/1162))
@@ -33,14 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarifications on installing packages in README ([#1036](https://github.com/microsoft/agent-framework/pull/1036))
 - DevUI Fixes ([#1035](https://github.com/microsoft/agent-framework/pull/1035))
 - Packaging fixes: removed lab from dependencies, setup build/publish tasks, set homepage url ([#1056](https://github.com/microsoft/agent-framework/pull/1056))
-
-### Documentation
 - Agents + Chat Client Samples Docstring Updates ([#1028](https://github.com/microsoft/agent-framework/pull/1028))
 - Python: Foundry Agent Completeness ([#954](https://github.com/microsoft/agent-framework/pull/954))
+
+### Fixed
+- Fix MCP tool calls to flatten nested JSON arguments (handle $ref schemas) ([#990](https://github.com/microsoft/agent-framework/pull/990))
+- Fix PyPI version strings to comply with PEP 440 ([#1040](https://github.com/microsoft/agent-framework/pull/1040))
+- Fix multimodal input sample: Document required environment variables and configuration options ([#1088](https://github.com/microsoft/agent-framework/pull/1088))
+- Fix Azure AI Getting Started samples: Improve documentation and code readability ([#1089](https://github.com/microsoft/agent-framework/pull/1089))
+- Fix a2a import ([#1058](https://github.com/microsoft/agent-framework/pull/1058))
+- Fix DevUI serialization and agent structured outputs ([#1055](https://github.com/microsoft/agent-framework/pull/1055))
+- Default DevUI workflows to string input when start node is auto-wrapped agent ([#1143](https://github.com/microsoft/agent-framework/pull/1143))
 - Add missing pre flags on pip packages ([#1130](https://github.com/microsoft/agent-framework/pull/1130))
 
-### Features
-- Introducing AI Function approval ([#1131](https://github.com/microsoft/agent-framework/pull/1131))
 
 ## [1.0.0b251001] - 2025-10-01
 
