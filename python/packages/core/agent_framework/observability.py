@@ -210,6 +210,7 @@ class OtelAttr(str, Enum):
     MESSAGE_SOURCE_ID = "message.source_id"
     MESSAGE_TARGET_ID = "message.target_id"
     MESSAGE_TYPE = "message.type"
+    MESSAGE_PAYLOAD_TYPE = "message.payload_type"
     MESSAGE_DESTINATION_EXECUTOR_ID = "message.destination_executor_id"
 
     # Activity events
@@ -278,11 +279,17 @@ def _get_azure_monitor_exporters(
     credential: "TokenCredential | None" = None,
 ) -> list["LogExporter | SpanExporter | MetricExporter"]:
     """Create Azure Monitor Exporters, based on the connection strings and optionally the credential."""
-    from azure.monitor.opentelemetry.exporter import (
-        AzureMonitorLogExporter,
-        AzureMonitorMetricExporter,
-        AzureMonitorTraceExporter,
-    )
+    try:
+        from azure.monitor.opentelemetry.exporter import (
+            AzureMonitorLogExporter,
+            AzureMonitorMetricExporter,
+            AzureMonitorTraceExporter,
+        )
+    except ImportError as e:
+        raise ImportError(
+            "azure-monitor-opentelemetry-exporter is required for Azure Monitor exporters. "
+            "Install it with: pip install azure-monitor-opentelemetry-exporter>=1.0.0b41"
+        ) from e
 
     exporters: list["LogExporter | SpanExporter | MetricExporter"] = []
     for conn_string in connection_strings:
@@ -825,7 +832,7 @@ def _trace_get_response(
         ) -> "ChatResponse":
             global OBSERVABILITY_SETTINGS
             if not OBSERVABILITY_SETTINGS.ENABLED:
-                # If model diagnostics are not enabled, just return the completion
+                # If model_id diagnostics are not enabled, just return the completion
                 return await func(
                     self,
                     messages=messages,
@@ -836,7 +843,7 @@ def _trace_get_response(
             if "operation_duration_histogram" not in self.additional_properties:
                 self.additional_properties["operation_duration_histogram"] = _get_duration_histogram()
             model_id = (
-                kwargs.get("model")
+                kwargs.get("model_id")
                 or (chat_options.model_id if (chat_options := kwargs.get("chat_options")) else None)
                 or getattr(self, "model_id", None)
             )
@@ -848,7 +855,7 @@ def _trace_get_response(
             attributes = _get_span_attributes(
                 operation_name=OtelAttr.CHAT_COMPLETION_OPERATION,
                 provider_name=provider_name,
-                model_id=model_id,
+                model=model_id,
                 service_url=service_url,
                 **kwargs,
             )
@@ -923,7 +930,7 @@ def _trace_get_streaming_response(
                 self.additional_properties["operation_duration_histogram"] = _get_duration_histogram()
 
             model_id = (
-                kwargs.get("model")
+                kwargs.get("model_id")
                 or (chat_options.model_id if (chat_options := kwargs.get("chat_options")) else None)
                 or getattr(self, "model_id", None)
             )
@@ -935,7 +942,7 @@ def _trace_get_streaming_response(
             attributes = _get_span_attributes(
                 operation_name=OtelAttr.CHAT_COMPLETION_OPERATION,
                 provider_name=provider_name,
-                model_id=model_id,
+                model=model_id,
                 service_url=service_url,
                 **kwargs,
             )
@@ -1346,7 +1353,7 @@ def _get_span_attributes(**kwargs: Any) -> dict[str, Any]:
         attributes[SpanAttributes.LLM_SYSTEM] = system_name
     if provider_name := kwargs.get("provider_name"):
         attributes[OtelAttr.PROVIDER_NAME] = provider_name
-    attributes[SpanAttributes.LLM_REQUEST_MODEL] = kwargs.get("model_id", "unknown")
+    attributes[SpanAttributes.LLM_REQUEST_MODEL] = kwargs.get("model", "unknown")
     if service_url := kwargs.get("service_url"):
         attributes[OtelAttr.ADDRESS] = service_url
     if conversation_id := kwargs.get("conversation_id", chat_options.conversation_id):
@@ -1567,6 +1574,7 @@ def create_processing_span(
     executor_id: str,
     executor_type: str,
     message_type: str,
+    payload_type: str,
     source_trace_contexts: list[dict[str, str]] | None = None,
     source_span_ids: list[str] | None = None,
 ) -> "_AgnosticContextManager[trace.Span]":
@@ -1575,6 +1583,14 @@ def create_processing_span(
     Processing spans are created as children of the current workflow span and
     linked (not nested) to the source publishing spans for causality tracking.
     This supports multiple links for fan-in scenarios.
+
+    Args:
+        executor_id: The unique ID of the executor processing the message.
+        executor_type: The type of the executor (class name).
+        message_type: The type of the message being processed ("standard" or "response").
+        payload_type: The data type of the message being processed.
+        source_trace_contexts: Optional trace contexts from source spans for linking.
+        source_span_ids: Optional source span IDs for linking.
     """
     # Create links to source spans for causality without nesting
     links: list[trace.Link] = []
@@ -1608,6 +1624,7 @@ def create_processing_span(
             OtelAttr.EXECUTOR_ID: executor_id,
             OtelAttr.EXECUTOR_TYPE: executor_type,
             OtelAttr.MESSAGE_TYPE: message_type,
+            OtelAttr.MESSAGE_PAYLOAD_TYPE: payload_type,
         },
         links=links,
     )
